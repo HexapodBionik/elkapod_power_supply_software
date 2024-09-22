@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <projectDescription>
-	<name>elkapod_power_supply_stm32_conf</name>
+	<name>ElkapodHardwareController</name>
 	<comment></comment>
 	<projects>
 	</projects>
