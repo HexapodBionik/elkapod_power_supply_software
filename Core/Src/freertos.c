@@ -49,8 +49,14 @@
 /* USER CODE BEGIN Variables */
 
 CAN_TxHeaderTypeDef TxHeader;
-uint8_t TxData[5] = {200, 5};
+CAN_RxHeaderTypeDef RxHeader;
+
 uint32_t TxMailbox;
+
+uint8_t TxData[5] = {200, 5};
+uint8_t RxData[8];
+uint32_t TxMailbox;
+
 HAL_StatusTypeDef status;
 
 /* USER CODE END Variables */
@@ -67,9 +73,13 @@ const osThreadAttr_t defaultTask_attributes = {
 
 void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin) {
   if(GPIO_Pin == USER_PUSHBUTTON_Pin) {
-    HAL_GPIO_TogglePin(LED_GPIO_Port, LED_Pin);
     status = HAL_CAN_AddTxMessage(&hcan1, &TxHeader, TxData, &TxMailbox);
   }
+}
+
+void HAL_CAN_RxFifo1MsgPendingCallback(CAN_HandleTypeDef *hcan) {
+  HAL_GPIO_TogglePin(LED_GPIO_Port, LED_Pin);
+  HAL_CAN_GetRxMessage(hcan, CAN_RX_FIFO1, &RxHeader, RxData);
 }
 
 /* USER CODE END FunctionPrototypes */
@@ -99,11 +109,12 @@ void vApplicationStackOverflowHook(xTaskHandle xTask, signed char *pcTaskName)
 void MX_FREERTOS_Init(void) {
   /* USER CODE BEGIN Init */
   HAL_CAN_Start(&hcan1);
-
+  HAL_CAN_ActivateNotification(&hcan1, CAN_IT_RX_FIFO1_MSG_PENDING);
+  
   TxHeader.DLC = 2;     // data length
   TxHeader.IDE = CAN_ID_STD;
   TxHeader.RTR = CAN_RTR_DATA;
-  TxHeader.StdId = 0x446;
+  TxHeader.StdId = 0x101;
 
   /* USER CODE END Init */
 
