@@ -6,3 +6,6 @@
 cmake-build-debug/
 cmake-build-release/
 
+Debug/
+Binaries/
+Release/
