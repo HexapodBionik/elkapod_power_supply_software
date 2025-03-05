@@ -28,6 +28,8 @@
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
+#include "pcf8574_expander.h"
+#include "mcp45xx.h"
 
 /* USER CODE END Includes */
 
@@ -38,6 +40,13 @@
 
 /* Private define ------------------------------------------------------------*/
 /* USER CODE BEGIN PD */
+#define EXPANDER_1_ADDRESS 0x40
+#define EXPANDER_2_ADDRESS 0x42
+
+#define POT_HVC_PIN 6
+#define POT_EN_PIN 7
+
+#define POT_1_ADDRESS 0b01011000
 
 /* USER CODE END PD */
 
@@ -49,6 +58,8 @@
 /* Private variables ---------------------------------------------------------*/
 
 /* USER CODE BEGIN PV */
+PCF7485_HandleTypeDef pcf8574;
+MCP45xx_HandleTypeDef mcp45xx;
 
 /* USER CODE END PV */
 
@@ -108,6 +119,14 @@ int main(void)
   MX_USART2_UART_Init();
   MX_USB_OTG_FS_PCD_Init();
   /* USER CODE BEGIN 2 */
+//  if (PCF7485_init(&pcf8574, &hi2c1, EXPANDER_1_ADDRESS) != HAL_OK) {
+//      Error_Handler();
+//  }
+
+  MCP45xx_init(&mcp45xx, &pcf8574, POT_EN_PIN, POT_HVC_PIN, &hi2c1, POT_1_ADDRESS);
+
+  blink_few_times(100, 5);
+  HAL_Delay(3000);
 
   /* USER CODE END 2 */
 
@@ -116,6 +135,23 @@ int main(void)
   while (1)
   {
     /* USER CODE END WHILE */
+	  MCP45xx_write_volatile(&mcp45xx, 0);
+	  blink_few_times(100, 5);
+	  HAL_Delay(3000);
+
+	  MCP45xx_write_volatile(&mcp45xx, 86);
+	  blink_few_times(100, 5);
+	  HAL_Delay(3000);
+
+	  MCP45xx_write_volatile(&mcp45xx, 128);
+	  blink_few_times(100, 5);
+	  HAL_Delay(3000);
+
+	  MCP45xx_write_volatile(&mcp45xx, 170);
+	  blink_few_times(100, 5);
+	  HAL_Delay(3000);
+
+	  MCP45xx_write_volatile(&mcp45xx, 256);
 	  blink_few_times(1000, 5);
 	  HAL_Delay(3000);
 

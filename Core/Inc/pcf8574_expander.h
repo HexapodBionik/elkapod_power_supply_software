@@ -19,4 +19,4 @@ void PCF7485_write_buffer(PCF7485_HandleTypeDef* pcf, uint8_t write_buffer);
 
 GPIO_PinState PCF7485_read_pin(PCF7485_HandleTypeDef* pcf, uint8_t pin);
 
-#endif PCF8574_EXPANDER_H
+#endif //PCF8574_EXPANDER_H
