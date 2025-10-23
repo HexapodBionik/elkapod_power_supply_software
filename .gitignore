@@ -1,8 +1,40 @@
-.idea/
-.vscode/
+build/
+Debug/
+Release/
 
-.DS_Store
+**/.idea/
+**/.vscode/
+**/*.swp
+**/*.swo
+**/*.asv
 
-cmake-build-debug/
-cmake-build-release/
+*.tmp
+*.log
+*.bak
+*.sav
+*.DS_Store
+Thumbs.db
 
+*.o
+*.d
+*.a
+*.elf
+*.bin
+*.hex
+*.map
+
+CMakeFiles/
+CMakeCache.txt
+cmake-build-*/
+
+*.launch
+**/__pycache__/
+
+!*.ioc
+!*.project
+!*.cproject
+!.mxproject
+!.settings/
+
+#Middlewares/
+#Drivers/

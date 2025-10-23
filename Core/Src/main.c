@@ -6,7 +6,7 @@
   ******************************************************************************
   * @attention
   *
-  * Copyright (c) 2024 STMicroelectronics.
+  * Copyright (c) 2025 STMicroelectronics.
   * All rights reserved.
   *
   * This software is licensed under terms that can be found in the LICENSE file
@@ -20,8 +20,11 @@
 #include "main.h"
 #include "adc.h"
 #include "can.h"
+#include "crc.h"
+#include "dma.h"
 #include "i2c.h"
 #include "spi.h"
+#include "tim.h"
 #include "gpio.h"
 
 /* Private includes ----------------------------------------------------------*/
@@ -37,6 +40,10 @@
 /* Private define ------------------------------------------------------------*/
 /* USER CODE BEGIN PD */
 
+#define EXPANDER1_ADDRESS 0x70
+#define EXPANDER2_ADDRESS 0x72
+
+
 /* USER CODE END PD */
 
 /* Private macro -------------------------------------------------------------*/
@@ -47,6 +54,33 @@
 /* Private variables ---------------------------------------------------------*/
 
 /* USER CODE BEGIN PV */
+PCF8574_HandleTypeDef expander1;
+PCF8574_HandleTypeDef expander2;
+
+
+uint16_t adc1_buf[ADC1_CHANNELS];
+
+uint16_t I_servo1_adc_value = 1;
+uint16_t I_servo2_adc_value = 1;
+uint16_t I_servo3_adc_value = 1;
+uint16_t I_servo4_adc_value = 1;
+uint16_t I_servo5_adc_value = 1;
+uint16_t I_servo6_adc_value = 1;
+uint16_t I_servo7_adc_value = 1;
+uint16_t I_servo8_adc_value = 1;
+uint16_t I_servo9_adc_value = 1;
+uint16_t I_servo10_adc_value = 1;
+uint16_t I_servo11_adc_value = 1;
+uint16_t I_servo12_adc_value = 1;
+uint16_t I_servo13_adc_value = 1;
+uint16_t I_servo14_adc_value = 1;
+uint16_t I_servo15_adc_value = 1;
+uint16_t I_servo16_adc_value = 1;
+uint16_t I_servo17_adc_value = 1;
+uint16_t I_servo18_adc_value = 1;
+
+uint16_t adc_test_value1 = 0;
+uint16_t adc_test_value3 = 0;
 
 /* USER CODE END PV */
 
@@ -68,6 +102,7 @@ void PeriphCommonClock_Config(void);
   */
 int main(void)
 {
+
   /* USER CODE BEGIN 1 */
 
   /* USER CODE END 1 */
@@ -84,7 +119,7 @@ int main(void)
   /* Configure the system clock */
   SystemClock_Config();
 
-/* Configure the peripherals common clocks */
+  /* Configure the peripherals common clocks */
   PeriphCommonClock_Config();
 
   /* USER CODE BEGIN SysInit */
@@ -93,13 +128,66 @@ int main(void)
 
   /* Initialize all configured peripherals */
   MX_GPIO_Init();
+  MX_DMA_Init();
   MX_ADC1_Init();
   MX_ADC3_Init();
   MX_CAN1_Init();
   MX_I2C1_Init();
   MX_I2C2_Init();
   MX_SPI3_Init();
+  MX_CRC_Init();
+  MX_TIM3_Init();
+  MX_TIM8_Init();
+  MX_TIM6_Init();
   /* USER CODE BEGIN 2 */
+
+  PCF7485_init(&expander1, &hi2c2, EXPANDER1_ADDRESS);
+
+
+  PCF7485_init(&expander2, &hi2c2, EXPANDER2_ADDRESS);
+
+
+  HAL_GPIO_WritePin(SERVO1_EN_GPIO_Port, SERVO1_EN_Pin, GPIO_PIN_SET);
+  HAL_GPIO_WritePin(SERVO2_EN_GPIO_Port, SERVO2_EN_Pin, GPIO_PIN_SET);
+  HAL_GPIO_WritePin(SERVO3_EN_GPIO_Port, SERVO3_EN_Pin, GPIO_PIN_SET);
+  HAL_GPIO_WritePin(SERVO4_EN_GPIO_Port, SERVO4_EN_Pin, GPIO_PIN_SET);
+  HAL_GPIO_WritePin(SERVO5_EN_GPIO_Port, SERVO5_EN_Pin, GPIO_PIN_SET);
+  HAL_GPIO_WritePin(SERVO6_EN_GPIO_Port, SERVO6_EN_Pin, GPIO_PIN_SET);
+  HAL_GPIO_WritePin(SERVO7_EN_GPIO_Port, SERVO7_EN_Pin, GPIO_PIN_SET);
+  HAL_GPIO_WritePin(SERVO8_EN_GPIO_Port, SERVO8_EN_Pin, GPIO_PIN_SET);
+  HAL_GPIO_WritePin(SERVO9_EN_GPIO_Port, SERVO9_EN_Pin, GPIO_PIN_SET);
+  HAL_GPIO_WritePin(SERVO10_EN_GPIO_Port, SERVO10_EN_Pin, GPIO_PIN_SET);
+  HAL_GPIO_WritePin(SERVO11_EN_GPIO_Port, SERVO11_EN_Pin, GPIO_PIN_SET);
+  HAL_GPIO_WritePin(SERVO12_EN_GPIO_Port, SERVO12_EN_Pin, GPIO_PIN_SET);
+  HAL_GPIO_WritePin(SERVO13_EN_GPIO_Port, SERVO13_EN_Pin, GPIO_PIN_SET);
+  HAL_GPIO_WritePin(SERVO14_EN_GPIO_Port, SERVO14_EN_Pin, GPIO_PIN_SET);
+  HAL_GPIO_WritePin(SERVO15_EN_GPIO_Port, SERVO15_EN_Pin, GPIO_PIN_SET);
+  HAL_GPIO_WritePin(SERVO16_EN_GPIO_Port, SERVO16_EN_Pin, GPIO_PIN_SET);
+  HAL_GPIO_WritePin(SERVO17_EN_GPIO_Port, SERVO17_EN_Pin, GPIO_PIN_SET);
+  HAL_GPIO_WritePin(SERVO18_EN_GPIO_Port, SERVO18_EN_Pin, GPIO_PIN_SET);
+
+  HAL_GPIO_WritePin(VOLTAGE_EN_GPIO_Port, VOLTAGE_EN_Pin, GPIO_PIN_SET);
+
+  HAL_GPIO_WritePin(LED_CONV1_GPIO_Port, LED_CONV1_Pin, GPIO_PIN_RESET);
+  HAL_GPIO_WritePin(LED_CONV2_GPIO_Port, LED_CONV2_Pin, GPIO_PIN_RESET);
+  HAL_GPIO_WritePin(LED_CONV3_GPIO_Port, LED_CONV3_Pin, GPIO_PIN_RESET);
+  HAL_GPIO_WritePin(LED_CONV4_GPIO_Port, LED_CONV4_Pin, GPIO_PIN_RESET);
+  HAL_GPIO_WritePin(LED_CONV5_GPIO_Port, LED_CONV5_Pin, GPIO_PIN_RESET);
+
+//  HAL_TIM_Base_Start(&htim6);
+//  if (HAL_ADC_Start_DMA(&hadc1, (uint32_t*)adc1_buf, ADC1_CHANNELS) != HAL_OK) {
+//	Error_Handler();
+//  }
+
+  PCF7485_write_pin(&expander1, EXPANDER1_CONV1_EN, GPIO_PIN_RESET);
+  PCF7485_write_pin(&expander1, EXPANDER1_CONV2_EN, GPIO_PIN_RESET);
+  PCF7485_write_pin(&expander1, EXPANDER1_CONV3_EN, GPIO_PIN_RESET);
+  PCF7485_write_pin(&expander1, EXPANDER1_CONV4_EN, GPIO_PIN_RESET);
+  PCF7485_write_pin(&expander1, EXPANDER1_CONV5_EN, GPIO_PIN_RESET);
+  PCF7485_write_pin(&expander1, EXPANDER1_POT_HVC, GPIO_PIN_SET);
+  PCF7485_write_pin(&expander1, EXPANDER1_POT_EN, GPIO_PIN_RESET);
+
+  PCF7485_write_buffer(&expander2, 0xFF);
 
   /* USER CODE END 2 */
 
@@ -107,6 +195,81 @@ int main(void)
   /* USER CODE BEGIN WHILE */
   while (1)
   {
+	HAL_GPIO_TogglePin(LED_POWER_ON_GPIO_Port, LED_POWER_ON_Pin);
+	HAL_GPIO_TogglePin(LED_FATAL_ERROR_GPIO_Port, LED_FATAL_ERROR_Pin);
+	HAL_GPIO_TogglePin(BAT_INDICATOR1_GPIO_Port, BAT_INDICATOR1_Pin);
+	HAL_GPIO_TogglePin(BAT_INDICATOR2_GPIO_Port, BAT_INDICATOR2_Pin);
+	HAL_GPIO_TogglePin(BAT_INDICATOR3_GPIO_Port, BAT_INDICATOR3_Pin);
+	HAL_GPIO_TogglePin(BAT_INDICATOR4_GPIO_Port, BAT_INDICATOR4_Pin);
+	HAL_GPIO_TogglePin(BAT_INDICATOR5_GPIO_Port, BAT_INDICATOR5_Pin);
+	HAL_GPIO_TogglePin(LED_STATUS1_GPIO_Port, LED_STATUS1_Pin);
+	HAL_GPIO_TogglePin(LED_STATUS2_GPIO_Port, LED_STATUS2_Pin);
+	HAL_GPIO_TogglePin(LED_STATUS3_GPIO_Port, LED_STATUS3_Pin);
+	HAL_GPIO_TogglePin(LED_STATUS4_GPIO_Port, LED_STATUS4_Pin);
+
+	if(HAL_GPIO_ReadPin(SW_FUNC_GPIO_Port, SW_FUNC_Pin) == GPIO_PIN_RESET) {
+		HAL_Delay(20);
+		PCF7485_write_pin(&expander1, EXPANDER1_CONV1_EN, GPIO_PIN_SET);
+		PCF7485_write_pin(&expander1, EXPANDER1_CONV2_EN, GPIO_PIN_SET);
+		PCF7485_write_pin(&expander1, EXPANDER1_CONV3_EN, GPIO_PIN_SET);
+		PCF7485_write_pin(&expander1, EXPANDER1_CONV4_EN, GPIO_PIN_SET);
+		PCF7485_write_pin(&expander1, EXPANDER1_CONV5_EN, GPIO_PIN_SET);
+
+		HAL_GPIO_WritePin(LED_CONV1_GPIO_Port, LED_CONV1_Pin, GPIO_PIN_SET);
+		HAL_GPIO_WritePin(LED_CONV2_GPIO_Port, LED_CONV2_Pin, GPIO_PIN_SET);
+		HAL_GPIO_WritePin(LED_CONV3_GPIO_Port, LED_CONV3_Pin, GPIO_PIN_SET);
+		HAL_GPIO_WritePin(LED_CONV4_GPIO_Port, LED_CONV4_Pin, GPIO_PIN_SET);
+		HAL_GPIO_WritePin(LED_CONV5_GPIO_Port, LED_CONV5_Pin, GPIO_PIN_SET);
+	}
+	if(HAL_GPIO_ReadPin(SW_CLR_ERR_GPIO_Port, SW_CLR_ERR_Pin) == GPIO_PIN_RESET) {
+		HAL_Delay(20);
+		PCF7485_write_pin(&expander1, EXPANDER1_CONV1_EN, GPIO_PIN_RESET);
+		PCF7485_write_pin(&expander1, EXPANDER1_CONV2_EN, GPIO_PIN_RESET);
+		PCF7485_write_pin(&expander1, EXPANDER1_CONV3_EN, GPIO_PIN_RESET);
+		PCF7485_write_pin(&expander1, EXPANDER1_CONV4_EN, GPIO_PIN_RESET);
+		PCF7485_write_pin(&expander1, EXPANDER1_CONV5_EN, GPIO_PIN_RESET);
+
+		HAL_GPIO_WritePin(LED_CONV1_GPIO_Port, LED_CONV1_Pin, GPIO_PIN_RESET);
+		HAL_GPIO_WritePin(LED_CONV2_GPIO_Port, LED_CONV2_Pin, GPIO_PIN_RESET);
+		HAL_GPIO_WritePin(LED_CONV3_GPIO_Port, LED_CONV3_Pin, GPIO_PIN_RESET);
+		HAL_GPIO_WritePin(LED_CONV4_GPIO_Port, LED_CONV4_Pin, GPIO_PIN_RESET);
+		HAL_GPIO_WritePin(LED_CONV5_GPIO_Port, LED_CONV5_Pin, GPIO_PIN_RESET);
+	}
+
+
+
+	// Start konwersji na jednym kanale
+	HAL_ADC_Start(&hadc1);
+
+	// Czekaj na zakończenie konwersji
+	if (HAL_ADC_PollForConversion(&hadc1, 10) == HAL_OK)
+	{
+		adc_test_value1 = HAL_ADC_GetValue(&hadc1);
+		// Tutaj możesz np. zatrzymać debugger i sprawdzić wartość
+		// lub wysłać ją przez UART
+	}
+
+	HAL_ADC_Stop(&hadc1);
+
+	HAL_ADC_Start(&hadc3);
+
+	if (HAL_ADC_PollForConversion(&hadc3, 10) == HAL_OK)
+	{
+		adc_test_value3 = HAL_ADC_GetValue(&hadc3);
+		// Tutaj możesz np. zatrzymać debugger i sprawdzić wartość
+		// lub wysłać ją przez UART
+	}
+
+	HAL_ADC_Stop(&hadc3);
+
+	HAL_Delay(100); // np. 10 Hz odświeżanie
+
+
+
+
+	HAL_Delay(100);
+
+
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */
@@ -133,14 +296,12 @@ void SystemClock_Config(void)
   /** Initializes the RCC Oscillators according to the specified parameters
   * in the RCC_OscInitTypeDef structure.
   */
-  RCC_OscInitStruct.OscillatorType = RCC_OSCILLATORTYPE_MSI;
-  RCC_OscInitStruct.MSIState = RCC_MSI_ON;
-  RCC_OscInitStruct.MSICalibrationValue = 0;
-  RCC_OscInitStruct.MSIClockRange = RCC_MSIRANGE_6;
+  RCC_OscInitStruct.OscillatorType = RCC_OSCILLATORTYPE_HSE;
+  RCC_OscInitStruct.HSEState = RCC_HSE_ON;
   RCC_OscInitStruct.PLL.PLLState = RCC_PLL_ON;
-  RCC_OscInitStruct.PLL.PLLSource = RCC_PLLSOURCE_MSI;
-  RCC_OscInitStruct.PLL.PLLM = 1;
-  RCC_OscInitStruct.PLL.PLLN = 40;
+  RCC_OscInitStruct.PLL.PLLSource = RCC_PLLSOURCE_HSE;
+  RCC_OscInitStruct.PLL.PLLM = 2;
+  RCC_OscInitStruct.PLL.PLLN = 10;
   RCC_OscInitStruct.PLL.PLLP = RCC_PLLP_DIV7;
   RCC_OscInitStruct.PLL.PLLQ = RCC_PLLQ_DIV2;
   RCC_OscInitStruct.PLL.PLLR = RCC_PLLR_DIV2;
@@ -176,9 +337,9 @@ void PeriphCommonClock_Config(void)
   */
   PeriphClkInit.PeriphClockSelection = RCC_PERIPHCLK_ADC;
   PeriphClkInit.AdcClockSelection = RCC_ADCCLKSOURCE_PLLSAI1;
-  PeriphClkInit.PLLSAI1.PLLSAI1Source = RCC_PLLSOURCE_MSI;
-  PeriphClkInit.PLLSAI1.PLLSAI1M = 1;
-  PeriphClkInit.PLLSAI1.PLLSAI1N = 16;
+  PeriphClkInit.PLLSAI1.PLLSAI1Source = RCC_PLLSOURCE_HSE;
+  PeriphClkInit.PLLSAI1.PLLSAI1M = 2;
+  PeriphClkInit.PLLSAI1.PLLSAI1N = 8;
   PeriphClkInit.PLLSAI1.PLLSAI1P = RCC_PLLP_DIV7;
   PeriphClkInit.PLLSAI1.PLLSAI1Q = RCC_PLLQ_DIV2;
   PeriphClkInit.PLLSAI1.PLLSAI1R = RCC_PLLR_DIV2;
@@ -190,6 +351,27 @@ void PeriphCommonClock_Config(void)
 }
 
 /* USER CODE BEGIN 4 */
+//void HAL_ADC_ConvCpltCallback(ADC_HandleTypeDef* hadc) {
+//    if (hadc->Instance == ADC1) {
+//    	I_servo3_adc_value = adc1_buf[I_SERVO3_ADC1_channel];
+//		I_servo4_adc_value = adc1_buf[I_SERVO4_ADC1_channel];
+//		I_servo5_adc_value = adc1_buf[I_SERVO5_ADC1_channel];
+//		I_servo6_adc_value = adc1_buf[I_SERVO6_ADC1_channel];
+//		I_servo7_adc_value = adc1_buf[I_SERVO7_ADC1_channel];
+//		I_servo8_adc_value = adc1_buf[I_SERVO8_ADC1_channel];
+//		I_servo9_adc_value = adc1_buf[I_SERVO9_ADC1_channel];
+//		I_servo10_adc_value = adc1_buf[I_SERVO10_ADC1_channel];
+//		I_servo11_adc_value = adc1_buf[I_SERVO11_ADC1_channel];
+//		I_servo12_adc_value = adc1_buf[I_SERVO12_ADC1_channel];
+//		I_servo13_adc_value = adc1_buf[I_SERVO13_ADC1_channel];
+//		I_servo14_adc_value = adc1_buf[I_SERVO14_ADC1_channel];
+//		I_servo15_adc_value = adc1_buf[I_SERVO15_ADC1_channel];
+//		I_servo16_adc_value = adc1_buf[I_SERVO16_ADC1_channel];
+//		I_servo17_adc_value = adc1_buf[I_SERVO17_ADC1_channel];
+//		I_servo18_adc_value = adc1_buf[I_SERVO18_ADC1_channel];
+//    }
+//
+//}
 
 /* USER CODE END 4 */
 
