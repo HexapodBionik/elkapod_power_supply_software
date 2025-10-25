@@ -63,8 +63,10 @@ void Error_Handler(void);
 #define SW_POWER_ON_GPIO_Port GPIOC
 #define CONV4_OC_Pin GPIO_PIN_14
 #define CONV4_OC_GPIO_Port GPIOC
+#define CONV4_OC_EXTI_IRQn EXTI15_10_IRQn
 #define CONV5_OC_Pin GPIO_PIN_15
 #define CONV5_OC_GPIO_Port GPIOC
+#define CONV5_OC_EXTI_IRQn EXTI15_10_IRQn
 #define VOLTAGE_EN_Pin GPIO_PIN_2
 #define VOLTAGE_EN_GPIO_Port GPIOF
 #define U_TEMP_Pin GPIO_PIN_3
@@ -197,6 +199,7 @@ void Error_Handler(void);
 #define MUX_A_GPIO_Port GPIOD
 #define SW_EMERGENCY_Pin GPIO_PIN_7
 #define SW_EMERGENCY_GPIO_Port GPIOD
+#define SW_EMERGENCY_EXTI_IRQn EXTI9_5_IRQn
 #define V_OUT_EN6_Pin GPIO_PIN_10
 #define V_OUT_EN6_GPIO_Port GPIOG
 #define V_OUT_EN5_Pin GPIO_PIN_11
@@ -211,10 +214,13 @@ void Error_Handler(void);
 #define V_OUT_EN1_GPIO_Port GPIOB
 #define CONV1_OC_Pin GPIO_PIN_9
 #define CONV1_OC_GPIO_Port GPIOB
+#define CONV1_OC_EXTI_IRQn EXTI9_5_IRQn
 #define CONV2_OC_Pin GPIO_PIN_0
 #define CONV2_OC_GPIO_Port GPIOE
+#define CONV2_OC_EXTI_IRQn EXTI0_IRQn
 #define CONV3_OC_Pin GPIO_PIN_1
 #define CONV3_OC_GPIO_Port GPIOE
+#define CONV3_OC_EXTI_IRQn EXTI1_IRQn
 
 /* USER CODE BEGIN Private defines */
 #define ADC1_CHANNELS 16

@@ -29,6 +29,8 @@
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
+#include "pcf8574.h"
+#include "mcp45xx.h"
 
 /* USER CODE END Includes */
 
@@ -43,6 +45,14 @@
 #define EXPANDER1_ADDRESS 0x70
 #define EXPANDER2_ADDRESS 0x72
 
+#define POT1_ADDRESS 0x5A
+#define POT2_ADDRESS 0x5C
+#define POT3_ADDRESS 0x58
+#define POT4_ADDRESS 0x5E
+
+
+#define CONV_EN_OC_DELAY 50
+
 
 /* USER CODE END PD */
 
@@ -56,6 +66,11 @@
 /* USER CODE BEGIN PV */
 PCF8574_HandleTypeDef expander1;
 PCF8574_HandleTypeDef expander2;
+
+MCP45xx_HandleTypeDef pot1;
+MCP45xx_HandleTypeDef pot2;
+MCP45xx_HandleTypeDef pot3;
+MCP45xx_HandleTypeDef pot4;
 
 
 uint16_t adc1_buf[ADC1_CHANNELS];
@@ -82,6 +97,14 @@ uint16_t I_servo18_adc_value = 1;
 uint16_t adc_test_value1 = 0;
 uint16_t adc_test_value3 = 0;
 
+uint8_t conv1_oc_status = 0;
+uint8_t conv2_oc_status = 0;
+uint8_t conv3_oc_status = 0;
+uint8_t conv4_oc_status = 0;
+uint8_t conv5_oc_status = 0;
+
+uint32_t last_tick_toggle_en_conv = 0;
+
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
@@ -104,6 +127,10 @@ int main(void)
 {
 
   /* USER CODE BEGIN 1 */
+
+  uint8_t HVC_bool = 0;
+  uint8_t pot_value = 1;
+  uint8_t converters_en = 1;
 
   /* USER CODE END 1 */
 
@@ -141,11 +168,6 @@ int main(void)
   MX_TIM6_Init();
   /* USER CODE BEGIN 2 */
 
-  PCF7485_init(&expander1, &hi2c2, EXPANDER1_ADDRESS);
-
-
-  PCF7485_init(&expander2, &hi2c2, EXPANDER2_ADDRESS);
-
 
   HAL_GPIO_WritePin(SERVO1_EN_GPIO_Port, SERVO1_EN_Pin, GPIO_PIN_SET);
   HAL_GPIO_WritePin(SERVO2_EN_GPIO_Port, SERVO2_EN_Pin, GPIO_PIN_SET);
@@ -166,13 +188,38 @@ int main(void)
   HAL_GPIO_WritePin(SERVO17_EN_GPIO_Port, SERVO17_EN_Pin, GPIO_PIN_SET);
   HAL_GPIO_WritePin(SERVO18_EN_GPIO_Port, SERVO18_EN_Pin, GPIO_PIN_SET);
 
-  HAL_GPIO_WritePin(VOLTAGE_EN_GPIO_Port, VOLTAGE_EN_Pin, GPIO_PIN_SET);
+  HAL_GPIO_WritePin(VOLTAGE_EN_GPIO_Port, VOLTAGE_EN_Pin, GPIO_PIN_RESET);
 
   HAL_GPIO_WritePin(LED_CONV1_GPIO_Port, LED_CONV1_Pin, GPIO_PIN_RESET);
   HAL_GPIO_WritePin(LED_CONV2_GPIO_Port, LED_CONV2_Pin, GPIO_PIN_RESET);
   HAL_GPIO_WritePin(LED_CONV3_GPIO_Port, LED_CONV3_Pin, GPIO_PIN_RESET);
   HAL_GPIO_WritePin(LED_CONV4_GPIO_Port, LED_CONV4_Pin, GPIO_PIN_RESET);
   HAL_GPIO_WritePin(LED_CONV5_GPIO_Port, LED_CONV5_Pin, GPIO_PIN_RESET);
+
+  HAL_GPIO_WritePin(MUX_B_GPIO_Port, MUX_B_Pin, GPIO_PIN_RESET);
+  HAL_GPIO_WritePin(MUX_A_GPIO_Port, MUX_A_Pin, GPIO_PIN_RESET);
+
+  HAL_GPIO_WritePin(V_OUT_EN1_GPIO_Port, V_OUT_EN1_Pin, GPIO_PIN_SET);
+  HAL_GPIO_WritePin(V_OUT_EN2_GPIO_Port, V_OUT_EN2_Pin, GPIO_PIN_SET);
+  HAL_GPIO_WritePin(V_OUT_EN3_GPIO_Port, V_OUT_EN3_Pin, GPIO_PIN_SET);
+  HAL_GPIO_WritePin(V_OUT_EN4_GPIO_Port, V_OUT_EN4_Pin, GPIO_PIN_RESET);
+  HAL_GPIO_WritePin(V_OUT_EN5_GPIO_Port, V_OUT_EN5_Pin, GPIO_PIN_RESET);
+  HAL_GPIO_WritePin(V_OUT_EN6_GPIO_Port, V_OUT_EN6_Pin, GPIO_PIN_RESET);
+
+
+  if(PCF7485_init(&expander1, &hi2c2, EXPANDER1_ADDRESS) != HAL_OK) {
+	  Error_Handler();
+  }
+
+  if(PCF7485_init(&expander2, &hi2c2, EXPANDER2_ADDRESS) != HAL_OK) {
+	  Error_Handler();
+  }
+
+
+  MCP45xx_init(&pot1, &expander1, EXPANDER1_POT_EN, EXPANDER1_POT_HVC, &hi2c2, POT1_ADDRESS);
+  MCP45xx_init(&pot2, &expander1, EXPANDER1_POT_EN, EXPANDER1_POT_HVC, &hi2c2, POT2_ADDRESS);
+  MCP45xx_init(&pot3, &expander1, EXPANDER1_POT_EN, EXPANDER1_POT_HVC, &hi2c2, POT3_ADDRESS);
+  MCP45xx_init(&pot4, &expander1, EXPANDER1_POT_EN, EXPANDER1_POT_HVC, &hi2c2, POT4_ADDRESS);
 
 //  HAL_TIM_Base_Start(&htim6);
 //  if (HAL_ADC_Start_DMA(&hadc1, (uint32_t*)adc1_buf, ADC1_CHANNELS) != HAL_OK) {
@@ -189,64 +236,155 @@ int main(void)
 
   PCF7485_write_buffer(&expander2, 0xFF);
 
+	// --- PWM FAN (500 Hz) ---
+	HAL_TIM_PWM_Start(&htim8, TIM_CHANNEL_4);
+	__HAL_TIM_SET_COMPARE(&htim8, TIM_CHANNEL_4, 500); // 50% duty (500 / 999)
+
+//	// --- BUZZER (1 kHz) ---
+//	HAL_TIM_PWM_Start(&htim3, TIM_CHANNEL_1);
+//	__HAL_TIM_SET_COMPARE(&htim3, TIM_CHANNEL_1, 500); // 50% duty cycle
+
   /* USER CODE END 2 */
 
   /* Infinite loop */
   /* USER CODE BEGIN WHILE */
+  uint8_t main_iteration = 0;
+
   while (1)
   {
-	HAL_GPIO_TogglePin(LED_POWER_ON_GPIO_Port, LED_POWER_ON_Pin);
-	HAL_GPIO_TogglePin(LED_FATAL_ERROR_GPIO_Port, LED_FATAL_ERROR_Pin);
-	HAL_GPIO_TogglePin(BAT_INDICATOR1_GPIO_Port, BAT_INDICATOR1_Pin);
-	HAL_GPIO_TogglePin(BAT_INDICATOR2_GPIO_Port, BAT_INDICATOR2_Pin);
-	HAL_GPIO_TogglePin(BAT_INDICATOR3_GPIO_Port, BAT_INDICATOR3_Pin);
-	HAL_GPIO_TogglePin(BAT_INDICATOR4_GPIO_Port, BAT_INDICATOR4_Pin);
-	HAL_GPIO_TogglePin(BAT_INDICATOR5_GPIO_Port, BAT_INDICATOR5_Pin);
 	HAL_GPIO_TogglePin(LED_STATUS1_GPIO_Port, LED_STATUS1_Pin);
 	HAL_GPIO_TogglePin(LED_STATUS2_GPIO_Port, LED_STATUS2_Pin);
 	HAL_GPIO_TogglePin(LED_STATUS3_GPIO_Port, LED_STATUS3_Pin);
 	HAL_GPIO_TogglePin(LED_STATUS4_GPIO_Port, LED_STATUS4_Pin);
 
+	if(conv1_oc_status == 1) {
+		HAL_GPIO_WritePin(BAT_INDICATOR1_GPIO_Port, BAT_INDICATOR1_Pin, GPIO_PIN_SET);
+	} else {
+		HAL_GPIO_WritePin(BAT_INDICATOR1_GPIO_Port, BAT_INDICATOR1_Pin, GPIO_PIN_RESET);
+	}
+	if(conv2_oc_status == 1) {
+		HAL_GPIO_WritePin(BAT_INDICATOR2_GPIO_Port, BAT_INDICATOR2_Pin, GPIO_PIN_SET);
+	} else {
+		HAL_GPIO_WritePin(BAT_INDICATOR2_GPIO_Port, BAT_INDICATOR2_Pin, GPIO_PIN_RESET);
+	}
+	if(conv3_oc_status == 1) {
+		HAL_GPIO_WritePin(BAT_INDICATOR3_GPIO_Port, BAT_INDICATOR3_Pin, GPIO_PIN_SET);
+	} else {
+		HAL_GPIO_WritePin(BAT_INDICATOR3_GPIO_Port, BAT_INDICATOR3_Pin, GPIO_PIN_RESET);
+	}
+	if(conv4_oc_status == 1) {
+		HAL_GPIO_WritePin(BAT_INDICATOR4_GPIO_Port, BAT_INDICATOR4_Pin, GPIO_PIN_SET);
+	} else {
+		HAL_GPIO_WritePin(BAT_INDICATOR4_GPIO_Port, BAT_INDICATOR4_Pin, GPIO_PIN_RESET);
+	}
+	if(conv5_oc_status == 1) {
+		HAL_GPIO_WritePin(BAT_INDICATOR5_GPIO_Port, BAT_INDICATOR5_Pin, GPIO_PIN_SET);
+	} else {
+		HAL_GPIO_WritePin(BAT_INDICATOR5_GPIO_Port, BAT_INDICATOR5_Pin, GPIO_PIN_RESET);
+	}
+
+
+	if(main_iteration == 10) {
+		HAL_GPIO_TogglePin(V_OUT_EN1_GPIO_Port, V_OUT_EN1_Pin);
+		HAL_GPIO_TogglePin(V_OUT_EN2_GPIO_Port, V_OUT_EN2_Pin);
+		HAL_GPIO_TogglePin(V_OUT_EN3_GPIO_Port, V_OUT_EN3_Pin);
+		HAL_GPIO_TogglePin(V_OUT_EN4_GPIO_Port, V_OUT_EN4_Pin);
+		HAL_GPIO_TogglePin(V_OUT_EN5_GPIO_Port, V_OUT_EN5_Pin);
+		HAL_GPIO_TogglePin(V_OUT_EN6_GPIO_Port, V_OUT_EN6_Pin);
+		HAL_GPIO_TogglePin(LED_POWER_ON_GPIO_Port, LED_POWER_ON_Pin);
+		main_iteration = 0;
+	}
+
+
+
 	if(HAL_GPIO_ReadPin(SW_FUNC_GPIO_Port, SW_FUNC_Pin) == GPIO_PIN_RESET) {
 		HAL_Delay(20);
-		PCF7485_write_pin(&expander1, EXPANDER1_CONV1_EN, GPIO_PIN_SET);
-		PCF7485_write_pin(&expander1, EXPANDER1_CONV2_EN, GPIO_PIN_SET);
-		PCF7485_write_pin(&expander1, EXPANDER1_CONV3_EN, GPIO_PIN_SET);
-		PCF7485_write_pin(&expander1, EXPANDER1_CONV4_EN, GPIO_PIN_SET);
-		PCF7485_write_pin(&expander1, EXPANDER1_CONV5_EN, GPIO_PIN_SET);
+		if(converters_en == 0) {
+			last_tick_toggle_en_conv = HAL_GetTick();
+			PCF7485_write_pin(&expander1, EXPANDER1_CONV1_EN, GPIO_PIN_RESET);
+			PCF7485_write_pin(&expander1, EXPANDER1_CONV2_EN, GPIO_PIN_RESET);
+			PCF7485_write_pin(&expander1, EXPANDER1_CONV3_EN, GPIO_PIN_RESET);
+			PCF7485_write_pin(&expander1, EXPANDER1_CONV4_EN, GPIO_PIN_RESET);
+			PCF7485_write_pin(&expander1, EXPANDER1_CONV5_EN, GPIO_PIN_RESET);
 
-		HAL_GPIO_WritePin(LED_CONV1_GPIO_Port, LED_CONV1_Pin, GPIO_PIN_SET);
-		HAL_GPIO_WritePin(LED_CONV2_GPIO_Port, LED_CONV2_Pin, GPIO_PIN_SET);
-		HAL_GPIO_WritePin(LED_CONV3_GPIO_Port, LED_CONV3_Pin, GPIO_PIN_SET);
-		HAL_GPIO_WritePin(LED_CONV4_GPIO_Port, LED_CONV4_Pin, GPIO_PIN_SET);
-		HAL_GPIO_WritePin(LED_CONV5_GPIO_Port, LED_CONV5_Pin, GPIO_PIN_SET);
+			HAL_GPIO_WritePin(LED_CONV1_GPIO_Port, LED_CONV1_Pin, GPIO_PIN_SET);
+			HAL_GPIO_WritePin(LED_CONV2_GPIO_Port, LED_CONV2_Pin, GPIO_PIN_SET);
+			HAL_GPIO_WritePin(LED_CONV3_GPIO_Port, LED_CONV3_Pin, GPIO_PIN_SET);
+			HAL_GPIO_WritePin(LED_CONV4_GPIO_Port, LED_CONV4_Pin, GPIO_PIN_SET);
+			HAL_GPIO_WritePin(LED_CONV5_GPIO_Port, LED_CONV5_Pin, GPIO_PIN_SET);
+			converters_en = 1;
+		} else {
+			last_tick_toggle_en_conv = HAL_GetTick();
+			PCF7485_write_pin(&expander1, EXPANDER1_CONV1_EN, GPIO_PIN_SET);
+			PCF7485_write_pin(&expander1, EXPANDER1_CONV2_EN, GPIO_PIN_SET);
+			PCF7485_write_pin(&expander1, EXPANDER1_CONV3_EN, GPIO_PIN_SET);
+			PCF7485_write_pin(&expander1, EXPANDER1_CONV4_EN, GPIO_PIN_SET);
+			PCF7485_write_pin(&expander1, EXPANDER1_CONV5_EN, GPIO_PIN_SET);
+
+			HAL_GPIO_WritePin(LED_CONV1_GPIO_Port, LED_CONV1_Pin, GPIO_PIN_RESET);
+			HAL_GPIO_WritePin(LED_CONV2_GPIO_Port, LED_CONV2_Pin, GPIO_PIN_RESET);
+			HAL_GPIO_WritePin(LED_CONV3_GPIO_Port, LED_CONV3_Pin, GPIO_PIN_RESET);
+			HAL_GPIO_WritePin(LED_CONV4_GPIO_Port, LED_CONV4_Pin, GPIO_PIN_RESET);
+			HAL_GPIO_WritePin(LED_CONV5_GPIO_Port, LED_CONV5_Pin, GPIO_PIN_RESET);
+			converters_en = 0;
+		}
 	}
+
+
+//	if(HAL_GPIO_ReadPin(SW_BAT_INDICATOR_GPIO_Port, SW_BAT_INDICATOR_Pin) == GPIO_PIN_RESET) {
+//		if(HVC_bool == 0) {
+//			PCF7485_write_pin(&expander1, EXPANDER1_POT_HVC, GPIO_PIN_RESET);
+//			HAL_GPIO_WritePin(LED_FATAL_ERROR_GPIO_Port, LED_FATAL_ERROR_Pin, GPIO_PIN_SET);
+//			HVC_bool = 1;
+//		} else {
+//			PCF7485_write_pin(&expander1, EXPANDER1_POT_HVC, GPIO_PIN_SET);
+//			HAL_GPIO_WritePin(LED_FATAL_ERROR_GPIO_Port, LED_FATAL_ERROR_Pin, GPIO_PIN_RESET);
+//			HVC_bool = 0;
+//		}
+//		HAL_Delay(1000);
+//	}
+
+
+	if (HAL_GPIO_ReadPin(SW_BAT_INDICATOR_GPIO_Port, SW_BAT_INDICATOR_Pin) == GPIO_PIN_RESET) {
+		if (pot_value == 1) {
+			for (uint16_t i = 0; i <= 255; i++) {
+				MCP45xx_increment_volatile(&pot1);
+				MCP45xx_increment_volatile(&pot2);
+				MCP45xx_increment_volatile(&pot3);
+				MCP45xx_increment_volatile(&pot4);
+				HAL_Delay(1);
+			}
+			HAL_Delay(1000);
+			pot_value = 0;
+		} else {
+			for (uint16_t i = 255; i > 0; i--) {
+				MCP45xx_decrement_volatile(&pot1);
+				MCP45xx_decrement_volatile(&pot2);
+				MCP45xx_decrement_volatile(&pot3);
+				MCP45xx_decrement_volatile(&pot4);
+				HAL_Delay(1);
+			}
+			pot_value = 1;
+			HAL_Delay(1000);
+		}
+	}
+
 	if(HAL_GPIO_ReadPin(SW_CLR_ERR_GPIO_Port, SW_CLR_ERR_Pin) == GPIO_PIN_RESET) {
-		HAL_Delay(20);
-		PCF7485_write_pin(&expander1, EXPANDER1_CONV1_EN, GPIO_PIN_RESET);
-		PCF7485_write_pin(&expander1, EXPANDER1_CONV2_EN, GPIO_PIN_RESET);
-		PCF7485_write_pin(&expander1, EXPANDER1_CONV3_EN, GPIO_PIN_RESET);
-		PCF7485_write_pin(&expander1, EXPANDER1_CONV4_EN, GPIO_PIN_RESET);
-		PCF7485_write_pin(&expander1, EXPANDER1_CONV5_EN, GPIO_PIN_RESET);
-
-		HAL_GPIO_WritePin(LED_CONV1_GPIO_Port, LED_CONV1_Pin, GPIO_PIN_RESET);
-		HAL_GPIO_WritePin(LED_CONV2_GPIO_Port, LED_CONV2_Pin, GPIO_PIN_RESET);
-		HAL_GPIO_WritePin(LED_CONV3_GPIO_Port, LED_CONV3_Pin, GPIO_PIN_RESET);
-		HAL_GPIO_WritePin(LED_CONV4_GPIO_Port, LED_CONV4_Pin, GPIO_PIN_RESET);
-		HAL_GPIO_WritePin(LED_CONV5_GPIO_Port, LED_CONV5_Pin, GPIO_PIN_RESET);
+		conv1_oc_status = 0;
+		conv2_oc_status = 0;
+		conv3_oc_status = 0;
+		conv4_oc_status = 0;
+		conv5_oc_status = 0;
 	}
 
 
 
-	// Start konwersji na jednym kanale
 	HAL_ADC_Start(&hadc1);
 
-	// Czekaj na zakończenie konwersji
 	if (HAL_ADC_PollForConversion(&hadc1, 10) == HAL_OK)
 	{
 		adc_test_value1 = HAL_ADC_GetValue(&hadc1);
-		// Tutaj możesz np. zatrzymać debugger i sprawdzić wartość
-		// lub wysłać ją przez UART
+
 	}
 
 	HAL_ADC_Stop(&hadc1);
@@ -256,18 +394,24 @@ int main(void)
 	if (HAL_ADC_PollForConversion(&hadc3, 10) == HAL_OK)
 	{
 		adc_test_value3 = HAL_ADC_GetValue(&hadc3);
-		// Tutaj możesz np. zatrzymać debugger i sprawdzić wartość
-		// lub wysłać ją przez UART
 	}
 
 	HAL_ADC_Stop(&hadc3);
 
-	HAL_Delay(100); // np. 10 Hz odświeżanie
+	HAL_Delay(100);
+
+//	for (uint32_t freq = 1000; freq <= 4000; freq += 500) {
+//		uint32_t period = (HAL_RCC_GetPCLK1Freq() / 80) / freq;
+//		__HAL_TIM_SET_AUTORELOAD(&htim3, period);
+//		__HAL_TIM_SET_COMPARE(&htim3, TIM_CHANNEL_1, period / 2);
+//		HAL_Delay(300);
+//	}
 
 
 
 
 	HAL_Delay(100);
+	main_iteration++;
 
 
     /* USER CODE END WHILE */
@@ -351,6 +495,38 @@ void PeriphCommonClock_Config(void)
 }
 
 /* USER CODE BEGIN 4 */
+
+void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin)
+{
+	if (HAL_GetTick() - last_tick_toggle_en_conv > CONV_EN_OC_DELAY) {
+		switch (GPIO_Pin)
+		{
+			case CONV1_OC_Pin:  // PB9
+				conv1_oc_status = 1;   // Zmień stan (toggle)
+				break;
+
+			case CONV2_OC_Pin:  // PE0
+				conv2_oc_status = 1;
+				break;
+
+			case CONV3_OC_Pin:  // PE1
+				conv3_oc_status = 1;
+				break;
+
+			case CONV4_OC_Pin:  // PC14
+				conv4_oc_status = 1;
+				break;
+
+			case CONV5_OC_Pin:  // PC15
+				conv5_oc_status = 1;
+				break;
+
+			default:
+				break;
+		}
+	}
+}
+
 //void HAL_ADC_ConvCpltCallback(ADC_HandleTypeDef* hadc) {
 //    if (hadc->Instance == ADC1) {
 //    	I_servo3_adc_value = adc1_buf[I_SERVO3_ADC1_channel];

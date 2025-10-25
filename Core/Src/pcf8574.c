@@ -19,7 +19,7 @@ HAL_StatusTypeDef PCF7485_init(PCF8574_HandleTypeDef* pcf, I2C_HandleTypeDef* hi
     pcf->read_buff = 0x00;
 
     // Check if the device is available
-    HAL_StatusTypeDef status = HAL_I2C_IsDeviceReady(pcf->hi2c, pcf->addr << 1, 5, 100);
+    HAL_StatusTypeDef status = HAL_I2C_IsDeviceReady(pcf->hi2c, pcf->addr, 5, 100);
     if(status != HAL_OK){
         return status;
     }

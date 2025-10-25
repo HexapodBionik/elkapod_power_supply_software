@@ -84,7 +84,7 @@ void MX_I2C2_Init(void)
 
   /* USER CODE END I2C2_Init 1 */
   hi2c2.Instance = I2C2;
-  hi2c2.Init.Timing = 0x10D19CE4;
+  hi2c2.Init.Timing = 0x10D19EE6;
   hi2c2.Init.OwnAddress1 = 0;
   hi2c2.Init.AddressingMode = I2C_ADDRESSINGMODE_7BIT;
   hi2c2.Init.DualAddressMode = I2C_DUALADDRESS_DISABLE;
@@ -99,7 +99,7 @@ void MX_I2C2_Init(void)
 
   /** Configure Analogue filter
   */
-  if (HAL_I2CEx_ConfigAnalogFilter(&hi2c2, I2C_ANALOGFILTER_ENABLE) != HAL_OK)
+  if (HAL_I2CEx_ConfigAnalogFilter(&hi2c2, I2C_ANALOGFILTER_DISABLE) != HAL_OK)
   {
     Error_Handler();
   }
@@ -191,7 +191,7 @@ void HAL_I2C_MspInit(I2C_HandleTypeDef* i2cHandle)
     hdma_i2c2_rx.Init.Request = DMA_REQUEST_3;
     hdma_i2c2_rx.Init.Direction = DMA_PERIPH_TO_MEMORY;
     hdma_i2c2_rx.Init.PeriphInc = DMA_PINC_DISABLE;
-    hdma_i2c2_rx.Init.MemInc = DMA_MINC_ENABLE;
+    hdma_i2c2_rx.Init.MemInc = DMA_MINC_DISABLE;
     hdma_i2c2_rx.Init.PeriphDataAlignment = DMA_PDATAALIGN_BYTE;
     hdma_i2c2_rx.Init.MemDataAlignment = DMA_MDATAALIGN_BYTE;
     hdma_i2c2_rx.Init.Mode = DMA_NORMAL;
@@ -208,7 +208,7 @@ void HAL_I2C_MspInit(I2C_HandleTypeDef* i2cHandle)
     hdma_i2c2_tx.Init.Request = DMA_REQUEST_3;
     hdma_i2c2_tx.Init.Direction = DMA_MEMORY_TO_PERIPH;
     hdma_i2c2_tx.Init.PeriphInc = DMA_PINC_DISABLE;
-    hdma_i2c2_tx.Init.MemInc = DMA_MINC_ENABLE;
+    hdma_i2c2_tx.Init.MemInc = DMA_MINC_DISABLE;
     hdma_i2c2_tx.Init.PeriphDataAlignment = DMA_PDATAALIGN_BYTE;
     hdma_i2c2_tx.Init.MemDataAlignment = DMA_MDATAALIGN_BYTE;
     hdma_i2c2_tx.Init.Mode = DMA_NORMAL;
