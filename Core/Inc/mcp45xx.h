@@ -29,11 +29,12 @@ typedef struct{
 
     uint8_t en_pin;
     uint8_t hvc_pin;
+    uint8_t tx_data[2];
+    uint8_t rx_data[2];
 
-//    uint8_t eeprom_value;
 } MCP45xx_HandleTypeDef;
 
-void MCP45xx_init(MCP45xx_HandleTypeDef* mcp, PCF8574_HandleTypeDef* pcf, uint8_t en_pin, uint8_t hvc_pin,
+HAL_StatusTypeDef MCP45xx_init(MCP45xx_HandleTypeDef* mcp, PCF8574_HandleTypeDef* pcf, uint8_t en_pin, uint8_t hvc_pin,
                   I2C_HandleTypeDef* hi2c, uint8_t addr);
 void MCP45xx_write_volatile(MCP45xx_HandleTypeDef* mcp, uint16_t n);
 void MCP45xx_write_non_volatile(MCP45xx_HandleTypeDef* mcp, uint16_t n);

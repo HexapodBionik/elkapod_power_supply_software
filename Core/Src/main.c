@@ -131,6 +131,7 @@ int main(void)
   uint8_t HVC_bool = 0;
   uint8_t pot_value = 1;
   uint8_t converters_en = 1;
+  uint16_t read_value = 0;
 
   /* USER CODE END 1 */
 
@@ -219,7 +220,9 @@ int main(void)
   MCP45xx_init(&pot1, &expander1, EXPANDER1_POT_EN, EXPANDER1_POT_HVC, &hi2c2, POT1_ADDRESS);
   MCP45xx_init(&pot2, &expander1, EXPANDER1_POT_EN, EXPANDER1_POT_HVC, &hi2c2, POT2_ADDRESS);
   MCP45xx_init(&pot3, &expander1, EXPANDER1_POT_EN, EXPANDER1_POT_HVC, &hi2c2, POT3_ADDRESS);
-  MCP45xx_init(&pot4, &expander1, EXPANDER1_POT_EN, EXPANDER1_POT_HVC, &hi2c2, POT4_ADDRESS);
+  if(MCP45xx_init(&pot4, &expander1, EXPANDER1_POT_EN, EXPANDER1_POT_HVC, &hi2c2, POT4_ADDRESS) != HAL_OK) {
+	  Error_Handler();
+  }
 
 //  HAL_TIM_Base_Start(&htim6);
 //  if (HAL_ADC_Start_DMA(&hadc1, (uint32_t*)adc1_buf, ADC1_CHANNELS) != HAL_OK) {
@@ -285,13 +288,29 @@ int main(void)
 
 
 	if(main_iteration == 10) {
-		HAL_GPIO_TogglePin(V_OUT_EN1_GPIO_Port, V_OUT_EN1_Pin);
-		HAL_GPIO_TogglePin(V_OUT_EN2_GPIO_Port, V_OUT_EN2_Pin);
-		HAL_GPIO_TogglePin(V_OUT_EN3_GPIO_Port, V_OUT_EN3_Pin);
-		HAL_GPIO_TogglePin(V_OUT_EN4_GPIO_Port, V_OUT_EN4_Pin);
-		HAL_GPIO_TogglePin(V_OUT_EN5_GPIO_Port, V_OUT_EN5_Pin);
-		HAL_GPIO_TogglePin(V_OUT_EN6_GPIO_Port, V_OUT_EN6_Pin);
-		HAL_GPIO_TogglePin(LED_POWER_ON_GPIO_Port, LED_POWER_ON_Pin);
+		MCP45xx_write_volatile(&pot4, 256);
+		HAL_Delay(100);
+		read_value = MCP45xx_read_volatile(&pot4);
+	}
+	if(main_iteration == 20) {
+		MCP45xx_write_volatile(&pot4, 255);
+		HAL_Delay(100);
+		read_value = MCP45xx_read_volatile(&pot4);
+	}
+	if(main_iteration == 30) {
+		MCP45xx_write_volatile(&pot4, 4);
+		HAL_Delay(100);
+		read_value = MCP45xx_read_volatile(&pot4);
+	}
+	if(main_iteration == 40) {
+		MCP45xx_write_volatile(&pot4, 128);
+		HAL_Delay(100);
+		read_value = MCP45xx_read_volatile(&pot4);
+	}
+	if(main_iteration == 50) {
+		MCP45xx_write_volatile(&pot4, 0);
+		HAL_Delay(100);
+		read_value = MCP45xx_read_volatile(&pot4);
 		main_iteration = 0;
 	}
 

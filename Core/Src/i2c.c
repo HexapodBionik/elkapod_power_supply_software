@@ -191,7 +191,7 @@ void HAL_I2C_MspInit(I2C_HandleTypeDef* i2cHandle)
     hdma_i2c2_rx.Init.Request = DMA_REQUEST_3;
     hdma_i2c2_rx.Init.Direction = DMA_PERIPH_TO_MEMORY;
     hdma_i2c2_rx.Init.PeriphInc = DMA_PINC_DISABLE;
-    hdma_i2c2_rx.Init.MemInc = DMA_MINC_DISABLE;
+    hdma_i2c2_rx.Init.MemInc = DMA_MINC_ENABLE;
     hdma_i2c2_rx.Init.PeriphDataAlignment = DMA_PDATAALIGN_BYTE;
     hdma_i2c2_rx.Init.MemDataAlignment = DMA_MDATAALIGN_BYTE;
     hdma_i2c2_rx.Init.Mode = DMA_NORMAL;
