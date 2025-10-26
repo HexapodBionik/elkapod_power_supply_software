@@ -30,7 +30,7 @@
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
 #include "pcf8574.h"
-#include "mcp45xx.h"
+#include "mcp4552.h"
 
 /* USER CODE END Includes */
 
@@ -67,10 +67,10 @@
 PCF8574_HandleTypeDef expander1;
 PCF8574_HandleTypeDef expander2;
 
-MCP45xx_HandleTypeDef pot1;
-MCP45xx_HandleTypeDef pot2;
-MCP45xx_HandleTypeDef pot3;
-MCP45xx_HandleTypeDef pot4;
+MCP4552_HandleTypeDef pot1;
+MCP4552_HandleTypeDef pot2;
+MCP4552_HandleTypeDef pot3;
+MCP4552_HandleTypeDef pot4;
 
 
 uint16_t adc1_buf[ADC1_CHANNELS];
@@ -217,10 +217,10 @@ int main(void)
   }
 
 
-  MCP45xx_init(&pot1, &expander1, EXPANDER1_POT_EN, EXPANDER1_POT_HVC, &hi2c2, POT1_ADDRESS);
-  MCP45xx_init(&pot2, &expander1, EXPANDER1_POT_EN, EXPANDER1_POT_HVC, &hi2c2, POT2_ADDRESS);
-  MCP45xx_init(&pot3, &expander1, EXPANDER1_POT_EN, EXPANDER1_POT_HVC, &hi2c2, POT3_ADDRESS);
-  if(MCP45xx_init(&pot4, &expander1, EXPANDER1_POT_EN, EXPANDER1_POT_HVC, &hi2c2, POT4_ADDRESS) != HAL_OK) {
+  MCP4552_init(&pot1, &hi2c2, POT1_ADDRESS);
+  MCP4552_init(&pot2, &hi2c2, POT2_ADDRESS);
+  MCP4552_init(&pot3, &hi2c2, POT3_ADDRESS);
+  if(MCP4552_init(&pot4, &hi2c2, POT4_ADDRESS) != HAL_OK) {
 	  Error_Handler();
   }
 
@@ -288,29 +288,29 @@ int main(void)
 
 
 	if(main_iteration == 10) {
-		MCP45xx_write_volatile(&pot4, 256);
+		MCP4552_write_volatile(&pot4, 256);
 		HAL_Delay(100);
-		read_value = MCP45xx_read_volatile(&pot4);
+		read_value = MCP4552_read_volatile(&pot4);
 	}
 	if(main_iteration == 20) {
-		MCP45xx_write_volatile(&pot4, 255);
+		MCP4552_write_volatile(&pot4, 255);
 		HAL_Delay(100);
-		read_value = MCP45xx_read_volatile(&pot4);
+		read_value = MCP4552_read_volatile(&pot4);
 	}
 	if(main_iteration == 30) {
-		MCP45xx_write_volatile(&pot4, 4);
+		MCP4552_write_volatile(&pot4, 4);
 		HAL_Delay(100);
-		read_value = MCP45xx_read_volatile(&pot4);
+		read_value = MCP4552_read_volatile(&pot4);
 	}
 	if(main_iteration == 40) {
-		MCP45xx_write_volatile(&pot4, 128);
+		MCP4552_write_volatile(&pot4, 128);
 		HAL_Delay(100);
-		read_value = MCP45xx_read_volatile(&pot4);
+		read_value = MCP4552_read_volatile(&pot4);
 	}
 	if(main_iteration == 50) {
-		MCP45xx_write_volatile(&pot4, 0);
+		MCP4552_write_volatile(&pot4, 0);
 		HAL_Delay(100);
-		read_value = MCP45xx_read_volatile(&pot4);
+		read_value = MCP4552_read_volatile(&pot4);
 		main_iteration = 0;
 	}
 
@@ -367,20 +367,20 @@ int main(void)
 	if (HAL_GPIO_ReadPin(SW_BAT_INDICATOR_GPIO_Port, SW_BAT_INDICATOR_Pin) == GPIO_PIN_RESET) {
 		if (pot_value == 1) {
 			for (uint16_t i = 0; i <= 255; i++) {
-				MCP45xx_increment_volatile(&pot1);
-				MCP45xx_increment_volatile(&pot2);
-				MCP45xx_increment_volatile(&pot3);
-				MCP45xx_increment_volatile(&pot4);
+				MCP4552_increment_volatile(&pot1);
+				MCP4552_increment_volatile(&pot2);
+				MCP4552_increment_volatile(&pot3);
+				MCP4552_increment_volatile(&pot4);
 				HAL_Delay(1);
 			}
 			HAL_Delay(1000);
 			pot_value = 0;
 		} else {
 			for (uint16_t i = 255; i > 0; i--) {
-				MCP45xx_decrement_volatile(&pot1);
-				MCP45xx_decrement_volatile(&pot2);
-				MCP45xx_decrement_volatile(&pot3);
-				MCP45xx_decrement_volatile(&pot4);
+				MCP4552_decrement_volatile(&pot1);
+				MCP4552_decrement_volatile(&pot2);
+				MCP4552_decrement_volatile(&pot3);
+				MCP4552_decrement_volatile(&pot4);
 				HAL_Delay(1);
 			}
 			pot_value = 1;

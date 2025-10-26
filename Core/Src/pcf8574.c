@@ -12,20 +12,15 @@ inline void i2c_dma_read(PCF8574_HandleTypeDef* pcf){
 }
 
 HAL_StatusTypeDef PCF7485_init(PCF8574_HandleTypeDef* pcf, I2C_HandleTypeDef* hi2c, uint8_t addr){
-    // Init PCF7485_HandleTypeDef struct
     pcf->hi2c = hi2c;
     pcf->addr = addr;
-    pcf->write_buff = 0b11111111;
-    pcf->read_buff = 0x00;
+    pcf->write_buff = 0xFF;
+    pcf->read_buff = 0xFF;
 
-    // Check if the device is available
     HAL_StatusTypeDef status = HAL_I2C_IsDeviceReady(pcf->hi2c, pcf->addr, 5, 100);
     if(status != HAL_OK){
         return status;
     }
-
-    // Set low level to all expander's gpios
-//    status = i2c_dma_write(pcf);
     return HAL_OK;
 }
 
