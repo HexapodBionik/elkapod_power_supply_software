@@ -31,6 +31,7 @@
 /* USER CODE BEGIN Includes */
 #include "pcf8574.h"
 #include "mcp4552.h"
+#include "adc121s021.h"
 
 /* USER CODE END Includes */
 
@@ -72,6 +73,15 @@ MCP4552_HandleTypeDef pot2;
 MCP4552_HandleTypeDef pot3;
 MCP4552_HandleTypeDef pot4;
 
+ADC121S021_HandleTypeDef adc1;
+ADC121S021_HandleTypeDef adc2;
+ADC121S021_HandleTypeDef adc3;
+ADC121S021_HandleTypeDef adc4;
+ADC121S021_HandleTypeDef adc5;
+ADC121S021_HandleTypeDef adc_I_supply;
+ADC121S021_HandleTypeDef adc_U_supply;
+ADC121S021_HandleTypeDef adc_U_bat;
+
 
 uint16_t adc1_buf[ADC1_CHANNELS];
 
@@ -104,6 +114,15 @@ uint8_t conv4_oc_status = 0;
 uint8_t conv5_oc_status = 0;
 
 uint32_t last_tick_toggle_en_conv = 0;
+
+uint16_t adc1_value = 0;
+uint16_t adc2_value = 0;
+uint16_t adc3_value = 0;
+uint16_t adc4_value = 0;
+uint16_t adc5_value = 0;
+uint16_t adc_I_supply_value = 0;
+uint16_t adc_U_supply_value = 0;
+uint16_t adc_U_bat_value = 0;
 
 /* USER CODE END PV */
 
@@ -216,6 +235,8 @@ int main(void)
 	  Error_Handler();
   }
 
+  HAL_Delay(100);
+
 
   MCP4552_init(&pot1, &hi2c2, POT1_ADDRESS);
   MCP4552_init(&pot2, &hi2c2, POT2_ADDRESS);
@@ -246,6 +267,15 @@ int main(void)
 //	// --- BUZZER (1 kHz) ---
 //	HAL_TIM_PWM_Start(&htim3, TIM_CHANNEL_1);
 //	__HAL_TIM_SET_COMPARE(&htim3, TIM_CHANNEL_1, 500); // 50% duty cycle
+	ADC121S021_init(&adc1, &hspi3, &expander2, ADC1_CS_PIN);
+	ADC121S021_init(&adc2, &hspi3, &expander2, ADC2_CS_PIN);
+	ADC121S021_init(&adc3, &hspi3, &expander2, ADC3_CS_PIN);
+	ADC121S021_init(&adc4, &hspi3, &expander2, ADC4_CS_PIN);
+	ADC121S021_init(&adc5, &hspi3, &expander2, ADC5_CS_PIN);
+	ADC121S021_init(&adc_I_supply, &hspi3, &expander2, ADC_I_SUPPLY_CS_PIN);
+	ADC121S021_init(&adc_U_supply, &hspi3, &expander2, ADC_U_SUPPLY_CS_PIN);
+	ADC121S021_init(&adc_U_bat, &hspi3, &expander2, ADC_U_BAT_CS_PIN);
+
 
   /* USER CODE END 2 */
 
@@ -287,32 +317,32 @@ int main(void)
 	}
 
 
-	if(main_iteration == 10) {
-		MCP4552_write_volatile(&pot4, 256);
-		HAL_Delay(100);
-		read_value = MCP4552_read_volatile(&pot4);
-	}
-	if(main_iteration == 20) {
-		MCP4552_write_volatile(&pot4, 255);
-		HAL_Delay(100);
-		read_value = MCP4552_read_volatile(&pot4);
-	}
-	if(main_iteration == 30) {
-		MCP4552_write_volatile(&pot4, 4);
-		HAL_Delay(100);
-		read_value = MCP4552_read_volatile(&pot4);
-	}
-	if(main_iteration == 40) {
-		MCP4552_write_volatile(&pot4, 128);
-		HAL_Delay(100);
-		read_value = MCP4552_read_volatile(&pot4);
-	}
-	if(main_iteration == 50) {
-		MCP4552_write_volatile(&pot4, 0);
-		HAL_Delay(100);
-		read_value = MCP4552_read_volatile(&pot4);
-		main_iteration = 0;
-	}
+//	if(main_iteration == 10) {
+//		MCP4552_write_volatile(&pot4, 256);
+//		HAL_Delay(100);
+//		read_value = MCP4552_read_volatile(&pot4);
+//	}
+//	if(main_iteration == 20) {
+//		MCP4552_write_volatile(&pot4, 255);
+//		HAL_Delay(100);
+//		read_value = MCP4552_read_volatile(&pot4);
+//	}
+//	if(main_iteration == 30) {
+//		MCP4552_write_volatile(&pot4, 4);
+//		HAL_Delay(100);
+//		read_value = MCP4552_read_volatile(&pot4);
+//	}
+//	if(main_iteration == 40) {
+//		MCP4552_write_volatile(&pot4, 128);
+//		HAL_Delay(100);
+//		read_value = MCP4552_read_volatile(&pot4);
+//	}
+//	if(main_iteration == 50) {
+//		MCP4552_write_volatile(&pot4, 0);
+//		HAL_Delay(100);
+//		read_value = MCP4552_read_volatile(&pot4);
+//		main_iteration = 0;
+//	}
 
 
 
@@ -425,6 +455,22 @@ int main(void)
 //		__HAL_TIM_SET_COMPARE(&htim3, TIM_CHANNEL_1, period / 2);
 //		HAL_Delay(300);
 //	}
+
+	adc1_value = ADC121S021_read(&adc1);
+	HAL_Delay(10);
+	adc2_value = ADC121S021_read(&adc2);
+	HAL_Delay(10);
+	adc3_value = ADC121S021_read(&adc3);
+	HAL_Delay(10);
+	adc4_value = ADC121S021_read(&adc4);
+	HAL_Delay(10);
+	adc5_value = ADC121S021_read(&adc5);
+	HAL_Delay(10);
+	adc_I_supply_value = ADC121S021_read(&adc_I_supply);
+	HAL_Delay(10);
+	adc_U_supply_value = ADC121S021_read(&adc_U_supply);
+	HAL_Delay(10);
+	adc_U_bat_value = ADC121S021_read(&adc_U_bat);
 
 
 

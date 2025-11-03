@@ -1,4 +1,4 @@
-#include <mcp4552.h>
+#include "mcp4552.h"
 
 
 HAL_StatusTypeDef MCP4552_init(MCP4552_HandleTypeDef* mcp, I2C_HandleTypeDef* hi2c, uint8_t addr){
@@ -41,10 +41,10 @@ void MCP4552_decrement_volatile(MCP4552_HandleTypeDef* mcp){
 
 
 uint16_t MCP4552_read_volatile(MCP4552_HandleTypeDef* mcp) {
-	uint8_t command = (MCP45xx_VOLATILE_WIPER_0 << 4) | MCP45xx_READ_OP;
+	mcp->tx_data[0] = (MCP45xx_VOLATILE_WIPER_0 << 4) | MCP45xx_READ_OP;
 
 	while (HAL_I2C_GetState(mcp->hi2c) != HAL_I2C_STATE_READY);
-	if (HAL_I2C_Mem_Read_DMA(mcp->hi2c, mcp->addr, command,
+	if (HAL_I2C_Mem_Read_DMA(mcp->hi2c, mcp->addr, mcp->tx_data[0],
 			I2C_MEMADD_SIZE_8BIT, mcp->rx_data, 2) != HAL_OK) {
 		return 0xFFFF; // Read error
 	}

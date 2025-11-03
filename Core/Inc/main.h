@@ -255,7 +255,14 @@ void Error_Handler(void);
 #define EXPANDER1_POT_HVC 6
 #define EXPANDER1_POT_EN 7
 
-
+#define ADC1_CS_PIN 0
+#define ADC2_CS_PIN 1
+#define ADC3_CS_PIN 2
+#define ADC4_CS_PIN 3
+#define ADC5_CS_PIN 4
+#define ADC_I_SUPPLY_CS_PIN 5
+#define ADC_U_SUPPLY_CS_PIN 6
+#define ADC_U_BAT_CS_PIN 7
 
 
 /* USER CODE END Private defines */
