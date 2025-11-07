@@ -54,6 +54,9 @@
 
 #define CONV_EN_OC_DELAY 50
 
+#define SPI_ADC_COUNT 8
+#define SPI_ADC_AVG_SAMPLES 10
+
 
 /* USER CODE END PD */
 
@@ -68,19 +71,29 @@
 PCF8574_HandleTypeDef expander1;
 PCF8574_HandleTypeDef expander2;
 
+ADC121S021_HandleTypeDef spi_adcs[SPI_ADC_COUNT];
+
 MCP4552_HandleTypeDef pot1;
 MCP4552_HandleTypeDef pot2;
 MCP4552_HandleTypeDef pot3;
 MCP4552_HandleTypeDef pot4;
 
-ADC121S021_HandleTypeDef adc1;
-ADC121S021_HandleTypeDef adc2;
-ADC121S021_HandleTypeDef adc3;
-ADC121S021_HandleTypeDef adc4;
-ADC121S021_HandleTypeDef adc5;
-ADC121S021_HandleTypeDef adc_I_supply;
-ADC121S021_HandleTypeDef adc_U_supply;
-ADC121S021_HandleTypeDef adc_U_bat;
+//ADC121S021_HandleTypeDef adc1;
+//ADC121S021_HandleTypeDef adc2;
+//ADC121S021_HandleTypeDef adc3;
+//ADC121S021_HandleTypeDef adc4;
+//ADC121S021_HandleTypeDef adc5;
+//ADC121S021_HandleTypeDef adc_I_supply;
+//ADC121S021_HandleTypeDef adc_U_supply;
+//ADC121S021_HandleTypeDef adc_U_bat;
+
+uint16_t spi_adc_samples[SPI_ADC_COUNT][SPI_ADC_AVG_SAMPLES] = {0};
+uint8_t spi_adc_sample_index[SPI_ADC_COUNT] = {0};
+uint16_t spi_adc_avg_values[SPI_ADC_COUNT] = {0};
+
+volatile uint8_t spi_current_adc = 0;
+volatile uint8_t spi_adc_conversion_in_progress = 0;
+volatile uint8_t spi_adc_pending = 0xFF; // 255 = lack
 
 
 uint16_t adc1_buf[ADC1_CHANNELS];
@@ -139,12 +152,21 @@ void PeriphCommonClock_Config(void);
 /* USER CODE BEGIN 0 */
 void adc_read_callback(void* user, HAL_StatusTypeDef status, uint16_t value)
 {
+    uint8_t adc_index = (uint8_t)(uintptr_t)user;
+
     if(status == HAL_OK) {
-        adc5_value = value;
-        adc5_ready = 1;
-    } else {
-    	Error_Handler();
+        spi_adc_samples[adc_index][spi_adc_sample_index[adc_index]] = value;
+
+        spi_adc_sample_index[adc_index]++;
+        if(spi_adc_sample_index[adc_index] >= SPI_ADC_AVG_SAMPLES) {
+            spi_adc_sample_index[adc_index] = 0;
+            uint32_t sum = 0;
+            for(uint8_t i = 0; i < SPI_ADC_AVG_SAMPLES; i++)
+                sum += spi_adc_samples[adc_index][i];
+            spi_adc_avg_values[adc_index] = sum / SPI_ADC_AVG_SAMPLES;
+        }
     }
+    spi_adc_conversion_in_progress = 0;
 }
 /* USER CODE END 0 */
 
@@ -198,6 +220,7 @@ int main(void)
   MX_TIM3_Init();
   MX_TIM8_Init();
   MX_TIM6_Init();
+  MX_TIM17_Init();
   /* USER CODE BEGIN 2 */
 
 
@@ -279,14 +302,24 @@ int main(void)
 //	// --- BUZZER (1 kHz) ---
 //	HAL_TIM_PWM_Start(&htim3, TIM_CHANNEL_1);
 //	__HAL_TIM_SET_COMPARE(&htim3, TIM_CHANNEL_1, 500); // 50% duty cycle
-	ADC121S021_init(&adc1, &hspi3, &expander2, ADC1_CS_PIN);
-	ADC121S021_init(&adc2, &hspi3, &expander2, ADC2_CS_PIN);
-	ADC121S021_init(&adc3, &hspi3, &expander2, ADC3_CS_PIN);
-	ADC121S021_init(&adc4, &hspi3, &expander2, ADC4_CS_PIN);
-	ADC121S021_init(&adc5, &hspi3, &expander2, ADC5_CS_PIN);
-	ADC121S021_init(&adc_I_supply, &hspi3, &expander2, ADC_I_SUPPLY_CS_PIN);
-	ADC121S021_init(&adc_U_supply, &hspi3, &expander2, ADC_U_SUPPLY_CS_PIN);
-	ADC121S021_init(&adc_U_bat, &hspi3, &expander2, ADC_U_BAT_CS_PIN);
+
+
+//	ADC121S021_init(&adc1, &hspi3, &expander2, ADC1_CS_PIN);
+//	ADC121S021_init(&adc2, &hspi3, &expander2, ADC2_CS_PIN);
+//	ADC121S021_init(&adc3, &hspi3, &expander2, ADC3_CS_PIN);
+//	ADC121S021_init(&adc4, &hspi3, &expander2, ADC4_CS_PIN);
+//	ADC121S021_init(&adc5, &hspi3, &expander2, ADC5_CS_PIN);
+//	ADC121S021_init(&adc_I_supply, &hspi3, &expander2, ADC_I_SUPPLY_CS_PIN);
+//	ADC121S021_init(&adc_U_supply, &hspi3, &expander2, ADC_U_SUPPLY_CS_PIN);
+//	ADC121S021_init(&adc_U_bat, &hspi3, &expander2, ADC_U_BAT_CS_PIN);
+
+	for (uint8_t i = 0; i < SPI_ADC_COUNT; i++) {
+	        ADC121S021_init(&spi_adcs[i], &hspi3, &expander2, i); // pin i na PCF
+	    }
+
+	HAL_Delay(50);
+
+	HAL_TIM_Base_Start_IT(&htim17);
 
 
   /* USER CODE END 2 */
@@ -483,21 +516,32 @@ int main(void)
 //	adc_U_supply_value = ADC121S021_read(&adc_U_supply);
 //	HAL_Delay(10);
 //	adc_U_bat_value = ADC121S021_read(&adc_U_bat);
-	if (ADC121S021_read_start(&adc5, adc_read_callback, NULL) == HAL_OK)
-	{
-		while(!adc5_ready);
 
-		adc5_ready = 0;
-		adc5_read_value = adc5_value;
-		HAL_Delay(100);
 
+//	if (ADC121S021_read_start(&adc5, adc_read_callback, NULL) == HAL_OK)
+//	{
+//		while(!adc5_ready);
+//
+//		adc5_ready = 0;
+//		adc5_read_value = adc5_value;
+//		HAL_Delay(100);
+//
+//	}
+//	else {
+//		HAL_Delay(1);
+//	}
+
+	if(spi_adc_pending != 0xFF && !spi_adc_conversion_in_progress) {
+		if(ADC121S021_read_start(&spi_adcs[spi_current_adc], adc_read_callback,
+							 	(void*)(uintptr_t)spi_current_adc) == HAL_OK) {
+			spi_adc_conversion_in_progress = 1;
+			spi_current_adc++;
+			if(spi_current_adc >= SPI_ADC_COUNT) {
+				spi_current_adc = 0;
+			}
+			spi_adc_pending = 0xFF;
+		}
 	}
-	else {
-		HAL_Delay(1);
-	}
-
-
-
 
 	HAL_Delay(100);
 	main_iteration++;
@@ -585,13 +629,12 @@ void PeriphCommonClock_Config(void)
 
 /* USER CODE BEGIN 4 */
 
-void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin)
-{
+void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin) {
 	if (HAL_GetTick() - last_tick_toggle_en_conv > CONV_EN_OC_DELAY) {
 		switch (GPIO_Pin)
 		{
 			case CONV1_OC_Pin:  // PB9
-				conv1_oc_status = 1;   // Zmień stan (toggle)
+				conv1_oc_status = 1;
 				break;
 
 			case CONV2_OC_Pin:  // PE0
@@ -614,6 +657,25 @@ void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin)
 				break;
 		}
 	}
+}
+
+
+void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim) {
+    if(htim->Instance == TIM17) {
+        if(!spi_adc_conversion_in_progress) {
+			if(ADC121S021_read_start(&spi_adcs[spi_current_adc], adc_read_callback,
+									 (void*)(uintptr_t)spi_current_adc) == HAL_OK) {
+				spi_adc_conversion_in_progress = 1;
+				spi_current_adc++;
+				if(spi_current_adc >= SPI_ADC_COUNT) {
+					spi_current_adc = 0;
+				}
+				spi_adc_pending = 0xFF;
+				return;
+			}
+        }
+        spi_adc_pending = spi_current_adc;
+    }
 }
 
 //void HAL_ADC_ConvCpltCallback(ADC_HandleTypeDef* hadc) {
