@@ -223,6 +223,9 @@ void Error_Handler(void);
 #define CONV3_OC_EXTI_IRQn EXTI1_IRQn
 
 /* USER CODE BEGIN Private defines */
+#define PCF_MAX_INSTANCES 2
+#define ADC_MAX_INSTANCES 8
+
 #define ADC1_CHANNELS 16
 
 #define I_SERVO3_ADC1_channel 0

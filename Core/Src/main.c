@@ -124,6 +124,8 @@ uint16_t adc_I_supply_value = 0;
 uint16_t adc_U_supply_value = 0;
 uint16_t adc_U_bat_value = 0;
 
+volatile uint8_t adc5_ready = 0;
+
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
@@ -135,7 +137,15 @@ void PeriphCommonClock_Config(void);
 
 /* Private user code ---------------------------------------------------------*/
 /* USER CODE BEGIN 0 */
-
+void adc_read_callback(void* user, HAL_StatusTypeDef status, uint16_t value)
+{
+    if(status == HAL_OK) {
+        adc5_value = value;
+        adc5_ready = 1;
+    } else {
+    	Error_Handler();
+    }
+}
 /* USER CODE END 0 */
 
 /**
@@ -147,10 +157,12 @@ int main(void)
 
   /* USER CODE BEGIN 1 */
 
-  uint8_t HVC_bool = 0;
   uint8_t pot_value = 1;
   uint8_t converters_en = 1;
   uint16_t read_value = 0;
+  uint16_t adc5_read_value = 0;
+
+
 
   /* USER CODE END 1 */
 
@@ -250,15 +262,15 @@ int main(void)
 //	Error_Handler();
 //  }
 
-  PCF7485_write_pin(&expander1, EXPANDER1_CONV1_EN, GPIO_PIN_RESET);
-  PCF7485_write_pin(&expander1, EXPANDER1_CONV2_EN, GPIO_PIN_RESET);
-  PCF7485_write_pin(&expander1, EXPANDER1_CONV3_EN, GPIO_PIN_RESET);
-  PCF7485_write_pin(&expander1, EXPANDER1_CONV4_EN, GPIO_PIN_RESET);
-  PCF7485_write_pin(&expander1, EXPANDER1_CONV5_EN, GPIO_PIN_RESET);
-  PCF7485_write_pin(&expander1, EXPANDER1_POT_HVC, GPIO_PIN_SET);
-  PCF7485_write_pin(&expander1, EXPANDER1_POT_EN, GPIO_PIN_RESET);
+  PCF7485_write_pin_blocking(&expander1, EXPANDER1_CONV1_EN, GPIO_PIN_RESET);
+  PCF7485_write_pin_blocking(&expander1, EXPANDER1_CONV2_EN, GPIO_PIN_RESET);
+  PCF7485_write_pin_blocking(&expander1, EXPANDER1_CONV3_EN, GPIO_PIN_RESET);
+  PCF7485_write_pin_blocking(&expander1, EXPANDER1_CONV4_EN, GPIO_PIN_RESET);
+  PCF7485_write_pin_blocking(&expander1, EXPANDER1_CONV5_EN, GPIO_PIN_RESET);
+  PCF7485_write_pin_blocking(&expander1, EXPANDER1_POT_HVC, GPIO_PIN_SET);
+  PCF7485_write_pin_blocking(&expander1, EXPANDER1_POT_EN, GPIO_PIN_RESET);
 
-  PCF7485_write_buffer(&expander2, 0xFF);
+  PCF7485_write_buffer_blocking(&expander2, 0xFF);
 
 	// --- PWM FAN (500 Hz) ---
 	HAL_TIM_PWM_Start(&htim8, TIM_CHANNEL_4);
@@ -350,11 +362,11 @@ int main(void)
 		HAL_Delay(20);
 		if(converters_en == 0) {
 			last_tick_toggle_en_conv = HAL_GetTick();
-			PCF7485_write_pin(&expander1, EXPANDER1_CONV1_EN, GPIO_PIN_RESET);
-			PCF7485_write_pin(&expander1, EXPANDER1_CONV2_EN, GPIO_PIN_RESET);
-			PCF7485_write_pin(&expander1, EXPANDER1_CONV3_EN, GPIO_PIN_RESET);
-			PCF7485_write_pin(&expander1, EXPANDER1_CONV4_EN, GPIO_PIN_RESET);
-			PCF7485_write_pin(&expander1, EXPANDER1_CONV5_EN, GPIO_PIN_RESET);
+			PCF7485_write_pin_blocking(&expander1, EXPANDER1_CONV1_EN, GPIO_PIN_RESET);
+			PCF7485_write_pin_blocking(&expander1, EXPANDER1_CONV2_EN, GPIO_PIN_RESET);
+			PCF7485_write_pin_blocking(&expander1, EXPANDER1_CONV3_EN, GPIO_PIN_RESET);
+			PCF7485_write_pin_blocking(&expander1, EXPANDER1_CONV4_EN, GPIO_PIN_RESET);
+			PCF7485_write_pin_blocking(&expander1, EXPANDER1_CONV5_EN, GPIO_PIN_RESET);
 
 			HAL_GPIO_WritePin(LED_CONV1_GPIO_Port, LED_CONV1_Pin, GPIO_PIN_SET);
 			HAL_GPIO_WritePin(LED_CONV2_GPIO_Port, LED_CONV2_Pin, GPIO_PIN_SET);
@@ -364,11 +376,11 @@ int main(void)
 			converters_en = 1;
 		} else {
 			last_tick_toggle_en_conv = HAL_GetTick();
-			PCF7485_write_pin(&expander1, EXPANDER1_CONV1_EN, GPIO_PIN_SET);
-			PCF7485_write_pin(&expander1, EXPANDER1_CONV2_EN, GPIO_PIN_SET);
-			PCF7485_write_pin(&expander1, EXPANDER1_CONV3_EN, GPIO_PIN_SET);
-			PCF7485_write_pin(&expander1, EXPANDER1_CONV4_EN, GPIO_PIN_SET);
-			PCF7485_write_pin(&expander1, EXPANDER1_CONV5_EN, GPIO_PIN_SET);
+			PCF7485_write_pin_blocking(&expander1, EXPANDER1_CONV1_EN, GPIO_PIN_SET);
+			PCF7485_write_pin_blocking(&expander1, EXPANDER1_CONV2_EN, GPIO_PIN_SET);
+			PCF7485_write_pin_blocking(&expander1, EXPANDER1_CONV3_EN, GPIO_PIN_SET);
+			PCF7485_write_pin_blocking(&expander1, EXPANDER1_CONV4_EN, GPIO_PIN_SET);
+			PCF7485_write_pin_blocking(&expander1, EXPANDER1_CONV5_EN, GPIO_PIN_SET);
 
 			HAL_GPIO_WritePin(LED_CONV1_GPIO_Port, LED_CONV1_Pin, GPIO_PIN_RESET);
 			HAL_GPIO_WritePin(LED_CONV2_GPIO_Port, LED_CONV2_Pin, GPIO_PIN_RESET);
@@ -456,21 +468,33 @@ int main(void)
 //		HAL_Delay(300);
 //	}
 
-	adc1_value = ADC121S021_read(&adc1);
-	HAL_Delay(10);
-	adc2_value = ADC121S021_read(&adc2);
-	HAL_Delay(10);
-	adc3_value = ADC121S021_read(&adc3);
-	HAL_Delay(10);
-	adc4_value = ADC121S021_read(&adc4);
-	HAL_Delay(10);
-	adc5_value = ADC121S021_read(&adc5);
-	HAL_Delay(10);
-	adc_I_supply_value = ADC121S021_read(&adc_I_supply);
-	HAL_Delay(10);
-	adc_U_supply_value = ADC121S021_read(&adc_U_supply);
-	HAL_Delay(10);
-	adc_U_bat_value = ADC121S021_read(&adc_U_bat);
+//	adc1_value = ADC121S021_read(&adc1);
+//	HAL_Delay(10);
+//	adc2_value = ADC121S021_read(&adc2);
+//	HAL_Delay(10);
+//	adc3_value = ADC121S021_read(&adc3);
+//	HAL_Delay(10);
+//	adc4_value = ADC121S021_read(&adc4);
+//	HAL_Delay(10);
+//	adc5_value = ADC121S021_read(&adc5);
+//	HAL_Delay(10);
+//	adc_I_supply_value = ADC121S021_read(&adc_I_supply);
+//	HAL_Delay(10);
+//	adc_U_supply_value = ADC121S021_read(&adc_U_supply);
+//	HAL_Delay(10);
+//	adc_U_bat_value = ADC121S021_read(&adc_U_bat);
+	if (ADC121S021_read_start(&adc5, adc_read_callback, NULL) == HAL_OK)
+	{
+		while(!adc5_ready);
+
+		adc5_ready = 0;
+		adc5_read_value = adc5_value;
+		HAL_Delay(100);
+
+	}
+	else {
+		HAL_Delay(1);
+	}
 
 
 
