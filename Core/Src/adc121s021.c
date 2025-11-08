@@ -1,10 +1,12 @@
 #include "adc121s021.h"
+#include "i2c_manager.h"
 #include "main.h"
 
 #ifndef ADC_MAX_INSTANCES
 #define ADC_MAX_INSTANCES 8
 #endif
 
+extern I2C_Manager i2c_mgr; // form main.c
 
 static ADC121S021_HandleTypeDef* adc_registry[ADC_MAX_INSTANCES] = {0};
 
@@ -28,6 +30,14 @@ static ADC121S021_HandleTypeDef* find_busy_adc_by_spi(SPI_HandleTypeDef* hspi){
         }
     }
     return NULL;
+}
+
+
+static void adc_on_start(void* user) {
+    ADC121S021_HandleTypeDef* adc = (ADC121S021_HandleTypeDef*)user;
+    if(adc) {
+        adc->busy = 1;
+    }
 }
 
 
@@ -59,7 +69,7 @@ HAL_StatusTypeDef ADC121S021_init(ADC121S021_HandleTypeDef* adc,
 	adc->user = NULL;
 
     cs_high_blocking(adc);
-    adc_register(adc);
+    if(adc_register(adc) != 0) return HAL_ERROR;
 	return HAL_OK;
 }
 
@@ -90,22 +100,46 @@ uint16_t ADC121S021_read_blocking(ADC121S021_HandleTypeDef* adc) {
 static void pcf_cs_low_done(uint8_t addr, HAL_StatusTypeDef status, void* user);
 static void pcf_cs_high_done(uint8_t addr, HAL_StatusTypeDef status, void* user);
 
+
 HAL_StatusTypeDef ADC121S021_read_start(ADC121S021_HandleTypeDef* adc,
                                         ADC121S021_Callback_t cb,
                                         void* user)
 {
-    if(!adc) return HAL_ERROR;
-    if(adc->busy) return HAL_BUSY;
+    if (!adc) return HAL_ERROR;
+    if (adc->busy) return HAL_BUSY;
 
     __disable_irq();
-    adc->busy = 1;
     adc->cb = cb;
     adc->user = user;
     __enable_irq();
 
-    return PCF8574_write_pin_async(adc->pcf, adc->pcf_cs_pin,
-                                   GPIO_PIN_RESET, pcf_cs_low_done, adc);
+    PCF8574_set_start_callback(adc->pcf, (PCF8574_StartCallback_t)adc_on_start, adc);
+
+    HAL_StatusTypeDef status = PCF8574_write_pin_async(adc->pcf, adc->pcf_cs_pin,
+                                                       GPIO_PIN_RESET, pcf_cs_low_done, adc);
+    if(status != HAL_OK && status != HAL_BUSY) {
+		PCF8574_clear_start_callback(adc->pcf);
+	}
+	return status;
 }
+
+
+//HAL_StatusTypeDef ADC121S021_read_start(ADC121S021_HandleTypeDef* adc,
+//                                        ADC121S021_Callback_t cb,
+//                                        void* user)
+//{
+//    if(!adc) return HAL_ERROR;
+//    if(adc->busy) return HAL_BUSY;
+//
+//    __disable_irq();
+//    adc->busy = 1;
+//    adc->cb = cb;
+//    adc->user = user;
+//    __enable_irq();
+//
+//    return PCF8574_write_pin_async(adc->pcf, adc->pcf_cs_pin,
+//                                   GPIO_PIN_RESET, pcf_cs_low_done, adc);
+//}
 
 
 static void pcf_cs_low_done(uint8_t addr, HAL_StatusTypeDef status, void* user)
