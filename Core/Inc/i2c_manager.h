@@ -25,7 +25,7 @@ typedef struct {
     uint8_t busy;
 } I2C_Manager;
 
-void I2C_Manager_Init(I2C_Manager* mgr, I2C_HandleTypeDef* hi2c);
+HAL_StatusTypeDef I2C_Manager_Init(I2C_Manager* mgr, I2C_HandleTypeDef* hi2c);
 HAL_StatusTypeDef I2C_Manager_TryEnqueue(I2C_Manager* mgr, I2C_TaskFunc_t func,
 										 void* ctx, I2C_StartCallback_t on_start_func,
 										 void* on_start_ctx);
@@ -35,6 +35,8 @@ HAL_StatusTypeDef I2C_Manager_LockAndTransmit_Blocking(I2C_Manager* mgr,
                                                        uint16_t address,
                                                        uint8_t* data, uint16_t size);
 void I2C_Manager_FlushQueue(I2C_Manager* mgr);
+
+I2C_Manager* I2C_Manager_FindByHi2C(I2C_HandleTypeDef* hi2c);
 
 #endif
 

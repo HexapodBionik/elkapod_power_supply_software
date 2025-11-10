@@ -3,13 +3,13 @@
 
 #include "i2c.h"
 #include "gpio.h"
-#include "stm32l4xx_hal.h"
+#include "i2c_manager.h"
 
 typedef void (*PCF8574_Callback_t)(uint8_t addr, HAL_StatusTypeDef status, void* user);
 typedef void (*PCF8574_StartCallback_t)(void* user);
 
 typedef struct{
-    I2C_HandleTypeDef* hi2c;
+    I2C_Manager* i2c_mgr;
     uint8_t addr;
 
     uint8_t write_buff;
@@ -25,7 +25,7 @@ typedef struct{
 } PCF8574_HandleTypeDef;
 
 
-HAL_StatusTypeDef PCF7485_init(PCF8574_HandleTypeDef* pcf, I2C_HandleTypeDef* hi2c, uint8_t addr);
+HAL_StatusTypeDef PCF7485_init(PCF8574_HandleTypeDef* pcf, I2C_Manager* i2c_mgr, uint8_t addr);
 
 HAL_StatusTypeDef PCF7485_write_buffer_blocking(PCF8574_HandleTypeDef* pcf, uint8_t data);
 HAL_StatusTypeDef PCF7485_write_pin_blocking(PCF8574_HandleTypeDef* pcf, uint8_t pin, GPIO_PinState state);

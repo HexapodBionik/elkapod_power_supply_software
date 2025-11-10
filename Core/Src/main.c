@@ -32,6 +32,7 @@
 #include "pcf8574.h"
 #include "mcp4552.h"
 #include "adc121s021.h"
+#include "i2c_manager.h"
 
 /* USER CODE END Includes */
 
@@ -68,6 +69,8 @@
 /* Private variables ---------------------------------------------------------*/
 
 /* USER CODE BEGIN PV */
+I2C_Manager hi2c2_mgr;
+
 PCF8574_HandleTypeDef expander1;
 PCF8574_HandleTypeDef expander2;
 
@@ -93,7 +96,6 @@ uint16_t spi_adc_avg_values[SPI_ADC_COUNT] = {0};
 
 volatile uint8_t spi_current_adc = 0;
 volatile uint8_t spi_adc_conversion_in_progress = 0;
-volatile uint8_t spi_adc_pending = 0xFF; // 255 = lack
 
 
 uint16_t adc1_buf[ADC1_CHANNELS];
@@ -222,6 +224,7 @@ int main(void)
   MX_TIM6_Init();
   MX_TIM17_Init();
   /* USER CODE BEGIN 2 */
+  I2C_Manager_Init(&hi2c2_mgr, &hi2c2);
 
 
   HAL_GPIO_WritePin(SERVO1_EN_GPIO_Port, SERVO1_EN_Pin, GPIO_PIN_SET);
@@ -262,21 +265,21 @@ int main(void)
   HAL_GPIO_WritePin(V_OUT_EN6_GPIO_Port, V_OUT_EN6_Pin, GPIO_PIN_RESET);
 
 
-  if(PCF7485_init(&expander1, &hi2c2, EXPANDER1_ADDRESS) != HAL_OK) {
+  if(PCF7485_init(&expander1, &hi2c2_mgr, EXPANDER1_ADDRESS) != HAL_OK) {
 	  Error_Handler();
   }
 
-  if(PCF7485_init(&expander2, &hi2c2, EXPANDER2_ADDRESS) != HAL_OK) {
+  if(PCF7485_init(&expander2, &hi2c2_mgr, EXPANDER2_ADDRESS) != HAL_OK) {
 	  Error_Handler();
   }
 
   HAL_Delay(100);
 
 
-  MCP4552_init(&pot1, &hi2c2, POT1_ADDRESS);
-  MCP4552_init(&pot2, &hi2c2, POT2_ADDRESS);
-  MCP4552_init(&pot3, &hi2c2, POT3_ADDRESS);
-  if(MCP4552_init(&pot4, &hi2c2, POT4_ADDRESS) != HAL_OK) {
+  MCP4552_init(&pot1, &hi2c2_mgr, POT1_ADDRESS);
+  MCP4552_init(&pot2, &hi2c2_mgr, POT2_ADDRESS);
+  MCP4552_init(&pot3, &hi2c2_mgr, POT3_ADDRESS);
+  if(MCP4552_init(&pot4, &hi2c2_mgr, POT4_ADDRESS) != HAL_OK) {
 	  Error_Handler();
   }
 
@@ -531,17 +534,7 @@ int main(void)
 //		HAL_Delay(1);
 //	}
 
-	if(spi_adc_pending != 0xFF && !spi_adc_conversion_in_progress) {
-		if(ADC121S021_read_start(&spi_adcs[spi_current_adc], adc_read_callback,
-							 	(void*)(uintptr_t)spi_current_adc) == HAL_OK) {
-			spi_adc_conversion_in_progress = 1;
-			spi_current_adc++;
-			if(spi_current_adc >= SPI_ADC_COUNT) {
-				spi_current_adc = 0;
-			}
-			spi_adc_pending = 0xFF;
-		}
-	}
+
 
 	HAL_Delay(100);
 	main_iteration++;
@@ -670,11 +663,9 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim) {
 				if(spi_current_adc >= SPI_ADC_COUNT) {
 					spi_current_adc = 0;
 				}
-				spi_adc_pending = 0xFF;
 				return;
 			}
         }
-        spi_adc_pending = spi_current_adc;
     }
 }
 

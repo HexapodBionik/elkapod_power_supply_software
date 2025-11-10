@@ -1,9 +1,39 @@
 #include "i2c_manager.h"
 
+#ifndef I2C_MANAGER_MAX
+#define I2C_MANAGER_MAX 2
+#endif
 
-void I2C_Manager_Init(I2C_Manager* mgr, I2C_HandleTypeDef* hi2c) {
+static I2C_Manager* i2c_manager_registry[I2C_MANAGER_MAX] = {0};
+
+
+static void I2C_Manager_Register(I2C_Manager* mgr) {
+    for (uint8_t i = 0; i < I2C_MANAGER_MAX; i++) {
+        if (i2c_manager_registry[i] == NULL) {
+            i2c_manager_registry[i] = mgr;
+            return;
+        }
+    }
+}
+
+
+I2C_Manager* I2C_Manager_FindByHi2C(I2C_HandleTypeDef* hi2c) {
+    for (uint8_t i = 0; i < I2C_MANAGER_MAX; i++) {
+        if (i2c_manager_registry[i] && i2c_manager_registry[i]->hi2c == hi2c)
+            return i2c_manager_registry[i];
+    }
+    return NULL;
+}
+
+
+HAL_StatusTypeDef I2C_Manager_Init(I2C_Manager* mgr, I2C_HandleTypeDef* hi2c) {
+	if(!hi2c) return HAL_ERROR;
     mgr->hi2c = hi2c;
-    mgr->head = mgr->tail = mgr->busy = 0;
+    mgr->head = 0;
+    mgr->tail = 0;
+    mgr->busy = 0;
+    I2C_Manager_Register(mgr);
+    return HAL_OK;
 }
 
 
@@ -67,13 +97,13 @@ void I2C_Manager_Process(I2C_Manager* mgr) {
 	if(queue_is_empty(mgr) || mgr->busy) return;
 
 	__disable_irq();
-	I2C_QueuedTask t = mgr->queue[mgr->tail];
+	I2C_QueuedTask task = mgr->queue[mgr->tail];
 	mgr->tail = (mgr->tail + 1) % I2C_QUEUE_LEN;
 	mgr->busy = 1;
 	__enable_irq();
 
-	if(t.on_start_func) t.on_start_func(t.on_start_ctx);
-	t.func(t.ctx, (I2C_DoneCallback_t)I2C_Manager_Release, mgr);
+	if(task.on_start_func) task.on_start_func(task.on_start_ctx);
+	task.func(task.ctx, (I2C_DoneCallback_t)I2C_Manager_Release, mgr);
 }
 
 
