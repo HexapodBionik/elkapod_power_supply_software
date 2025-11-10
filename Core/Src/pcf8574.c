@@ -122,13 +122,16 @@ HAL_StatusTypeDef PCF7485_write_pin_blocking(PCF8574_HandleTypeDef* pcf, uint8_t
 }
 
 
-// optional TODO - write function to manager for blocking reading
 GPIO_PinState PCF7485_read_pin_blocking(PCF8574_HandleTypeDef* pcf, uint8_t pin){
-	while(HAL_I2C_GetState(pcf->i2c_mgr->hi2c) != HAL_I2C_STATE_READY);
-	HAL_I2C_Master_Receive_DMA(pcf->i2c_mgr->hi2c, pcf->addr + 0x01, &pcf->read_buff, sizeof(pcf->write_buff));
-
-	while(HAL_I2C_GetState(pcf->i2c_mgr->hi2c) != HAL_I2C_STATE_READY);
-    if(pcf->read_buff & (0x01 << pin)){
+	if (I2C_Manager_LockAndReceive_Blocking(pcf->i2c_mgr, pcf->addr + 0x01,
+	                                            &pcf->read_buff, sizeof(pcf->read_buff)) != HAL_OK) {
+	        return GPIO_PIN_RESET;
+	    }
+//	while(HAL_I2C_GetState(pcf->i2c_mgr->hi2c) != HAL_I2C_STATE_READY);
+//	HAL_I2C_Master_Receive_DMA(pcf->i2c_mgr->hi2c, pcf->addr + 0x01, &pcf->read_buff, sizeof(pcf->write_buff));
+//
+//	while(HAL_I2C_GetState(pcf->i2c_mgr->hi2c) != HAL_I2C_STATE_READY);
+    if(pcf->read_buff & (0x01 << pin)) {
         return GPIO_PIN_SET;
     }
     return GPIO_PIN_RESET;

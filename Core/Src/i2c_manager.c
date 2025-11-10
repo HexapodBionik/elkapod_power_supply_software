@@ -128,10 +128,68 @@ HAL_StatusTypeDef I2C_Manager_LockAndTransmit_Blocking(I2C_Manager* mgr,
 }
 
 
+HAL_StatusTypeDef I2C_Manager_LockAndReceive_Blocking(I2C_Manager* mgr,
+													  uint16_t address,
+                                                      uint8_t* data, uint16_t size) {
+    while (!queue_is_empty(mgr) || mgr->busy == 1 || HAL_I2C_GetState(mgr->hi2c) != HAL_I2C_STATE_READY);
+
+    __disable_irq();
+    mgr->busy = 1;
+    __enable_irq();
+
+    HAL_StatusTypeDef status = HAL_I2C_Master_Receive_DMA(mgr->hi2c, address, data, size);
+
+
+    while (HAL_I2C_GetState(mgr->hi2c) != HAL_I2C_STATE_READY);
+
+    __disable_irq();
+    mgr->busy = 0;
+    __enable_irq();
+
+    return status;
+}
+
+
+HAL_StatusTypeDef I2C_Manager_LockAndMemRead_Blocking(I2C_Manager* mgr,
+													  uint16_t address,
+                                                      uint16_t mem_addr, uint16_t mem_addr_size,
+                                                      uint8_t* data, uint16_t size) {
+    while (!queue_is_empty(mgr) || mgr->busy == 1 || HAL_I2C_GetState(mgr->hi2c) != HAL_I2C_STATE_READY);
+
+    __disable_irq();
+    mgr->busy = 1;
+    __enable_irq();
+
+    HAL_StatusTypeDef status = HAL_I2C_Mem_Read_DMA(mgr->hi2c, address,
+                                                    mem_addr, mem_addr_size,
+                                                    data, size);
+
+    while (mgr->busy == 1);
+
+    __disable_irq();
+    mgr->busy = 0;
+    __enable_irq();
+
+    return status;
+}
+
+
 void I2C_Manager_FlushQueue(I2C_Manager* mgr) {
     __disable_irq();
     mgr->head = 0;
     mgr->tail = 0;
     mgr->busy = 0;
     __enable_irq();
+}
+
+
+void HAL_I2C_MasterRxCpltCallback(I2C_HandleTypeDef *hi2c) {
+    I2C_Manager* mgr = I2C_Manager_FindByHi2C(hi2c);
+    if (mgr) I2C_Manager_Release(mgr);
+}
+
+
+void HAL_I2C_MemRxCpltCallback(I2C_HandleTypeDef *hi2c) {
+    I2C_Manager* mgr = I2C_Manager_FindByHi2C(hi2c);
+    if (mgr) I2C_Manager_Release(mgr);
 }

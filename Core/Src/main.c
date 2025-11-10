@@ -184,6 +184,7 @@ int main(void)
   uint8_t pot_value = 1;
   uint8_t converters_en = 1;
   uint16_t read_value = 0;
+  uint16_t mcp_read_value = 0;
   uint16_t adc5_read_value = 0;
 
 
@@ -329,7 +330,7 @@ int main(void)
 
   /* Infinite loop */
   /* USER CODE BEGIN WHILE */
-  uint8_t main_iteration = 0;
+  uint16_t main_iteration = 0;
 
   while (1)
   {
@@ -365,32 +366,27 @@ int main(void)
 	}
 
 
-//	if(main_iteration == 10) {
+//	if(main_iteration == 1000) {
 //		MCP4552_write_volatile(&pot4, 256);
-//		HAL_Delay(100);
-//		read_value = MCP4552_read_volatile(&pot4);
 //	}
-//	if(main_iteration == 20) {
+//	if(main_iteration == 2000) {
 //		MCP4552_write_volatile(&pot4, 255);
-//		HAL_Delay(100);
-//		read_value = MCP4552_read_volatile(&pot4);
 //	}
-//	if(main_iteration == 30) {
+//	if(main_iteration == 3000) {
 //		MCP4552_write_volatile(&pot4, 4);
-//		HAL_Delay(100);
-//		read_value = MCP4552_read_volatile(&pot4);
 //	}
-//	if(main_iteration == 40) {
+//	if(main_iteration == 4000) {
 //		MCP4552_write_volatile(&pot4, 128);
-//		HAL_Delay(100);
-//		read_value = MCP4552_read_volatile(&pot4);
 //	}
-//	if(main_iteration == 50) {
+//	if(main_iteration == 5000) {
 //		MCP4552_write_volatile(&pot4, 0);
-//		HAL_Delay(100);
-//		read_value = MCP4552_read_volatile(&pot4);
 //		main_iteration = 0;
 //	}
+
+	mcp_read_value = MCP4552_read_volatile(&pot4);
+//	MCP4552_read_volatile(&pot1);
+//	MCP4552_read_volatile(&pot2);
+//	MCP4552_read_volatile(&pot3);
 
 
 
@@ -495,7 +491,7 @@ int main(void)
 
 	HAL_ADC_Stop(&hadc3);
 
-	HAL_Delay(100);
+//	HAL_Delay(100);
 
 //	for (uint32_t freq = 1000; freq <= 4000; freq += 500) {
 //		uint32_t period = (HAL_RCC_GetPCLK1Freq() / 80) / freq;
@@ -536,8 +532,27 @@ int main(void)
 
 
 
-	HAL_Delay(100);
+//	HAL_Delay(100);
 	main_iteration++;
+
+//	MCP4552_increment_volatile(&pot1);
+//	MCP4552_increment_volatile(&pot2);
+//	MCP4552_increment_volatile(&pot3);
+//	MCP4552_increment_volatile(&pot4);
+//
+//	MCP4552_decrement_volatile(&pot1);
+//	MCP4552_decrement_volatile(&pot2);
+//	MCP4552_decrement_volatile(&pot3);
+//	MCP4552_decrement_volatile(&pot4);
+
+
+	read_value = PCF7485_read_pin_blocking(&expander1, 1);
+//	PCF7485_read_pin_blocking(&expander1, 2);
+//	PCF7485_read_pin_blocking(&expander1, 3);
+//	PCF7485_read_pin_blocking(&expander1, 4);
+
+	HAL_Delay(1);
+
 
 
     /* USER CODE END WHILE */

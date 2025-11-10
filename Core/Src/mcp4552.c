@@ -48,12 +48,17 @@ HAL_StatusTypeDef MCP4552_decrement_volatile(MCP4552_HandleTypeDef* mcp){
 uint16_t MCP4552_read_volatile(MCP4552_HandleTypeDef* mcp) {
 	mcp->tx_data[0] = (MCP45xx_VOLATILE_WIPER_0 << 4) | MCP45xx_READ_OP;
 
-	while (HAL_I2C_GetState(mcp->i2c_mgr->hi2c) != HAL_I2C_STATE_READY);
-	if (HAL_I2C_Mem_Read_DMA(mcp->i2c_mgr->hi2c, mcp->addr, mcp->tx_data[0],
-			I2C_MEMADD_SIZE_8BIT, mcp->rx_data, 2) != HAL_OK) {
-		return 0xFFFF; // Read error
+//	while (HAL_I2C_GetState(mcp->i2c_mgr->hi2c) != HAL_I2C_STATE_READY);
+//	if (HAL_I2C_Mem_Read_DMA(mcp->i2c_mgr->hi2c, mcp->addr, mcp->tx_data[0],
+//			I2C_MEMADD_SIZE_8BIT, mcp->rx_data, 2) != HAL_OK) {
+//		return 0xFFFF; // Read error
+//	}
+//	while (HAL_I2C_GetState(mcp->i2c_mgr->hi2c) != HAL_I2C_STATE_READY);
+	if (I2C_Manager_LockAndMemRead_Blocking(mcp->i2c_mgr, mcp->addr,
+											mcp->tx_data[0], I2C_MEMADD_SIZE_8BIT,
+	                                        mcp->rx_data, 2) != HAL_OK) {
+		return 0xFFFF;
 	}
-	while (HAL_I2C_GetState(mcp->i2c_mgr->hi2c) != HAL_I2C_STATE_READY);
 
 	uint16_t value = ((mcp->rx_data[0] & 0x01) << 8) | mcp->rx_data[1];
 	return value;
