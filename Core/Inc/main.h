@@ -223,31 +223,40 @@ void Error_Handler(void);
 #define CONV3_OC_EXTI_IRQn EXTI1_IRQn
 
 /* USER CODE BEGIN Private defines */
+
+// amount of peripherals
 #define PCF_MAX_INSTANCES 2
 #define ADC_MAX_INSTANCES 8
 
 #define ADC1_CHANNELS 16
-
-#define I_SERVO3_ADC1_channel 0
-#define I_SERVO4_ADC1_channel 1
-#define I_SERVO5_ADC1_channel 2
-#define I_SERVO6_ADC1_channel 3
-#define I_SERVO7_ADC1_channel 4
-#define I_SERVO8_ADC1_channel 5
-#define I_SERVO9_ADC1_channel 6
-#define I_SERVO10_ADC1_channel 7
-#define I_SERVO11_ADC1_channel 8
-#define I_SERVO12_ADC1_channel 9
-#define I_SERVO13_ADC1_channel 10
-#define I_SERVO14_ADC1_channel 11
-#define I_SERVO15_ADC1_channel 12
-#define I_SERVO16_ADC1_channel 13
-#define I_SERVO17_ADC1_channel 14
-#define I_SERVO18_ADC1_channel 15
+#define ADC3_CHANNELS 7
 
 
-#define I_SERVO1_ADC3_channel 11
-#define I_SERVO2_ADC3_channel 12
+// pin mapping
+#define I_SERVO3_ADC1_rank 0
+#define I_SERVO4_ADC1_rank 1
+#define I_SERVO5_ADC1_rank 2
+#define I_SERVO6_ADC1_rank 3
+#define I_SERVO7_ADC1_rank 4
+#define I_SERVO8_ADC1_rank 5
+#define I_SERVO9_ADC1_rank 6
+#define I_SERVO10_ADC1_rank 7
+#define I_SERVO11_ADC1_rank 8
+#define I_SERVO12_ADC1_rank 9
+#define I_SERVO13_ADC1_rank 10
+#define I_SERVO14_ADC1_rank 11
+#define I_SERVO15_ADC1_rank 12
+#define I_SERVO16_ADC1_rank 13
+#define I_SERVO17_ADC1_rank 14
+#define I_SERVO18_ADC1_rank 15
+
+#define I_SERVO1_ADC3_rank 5
+#define I_SERVO2_ADC3_rank 6
+#define U_TEMP_ADC3_rank 0
+#define I_MANIP_SENSE_ADC3_rank 1
+#define I_5V_POW_SENSE_ADC3_rank 2
+#define I_3V3_POW_SENSE_ADC3_rank 3
+#define I_STANDBY_SENSE_ADC3_rank 4
 
 
 #define EXPANDER1_CONV1_EN 0
@@ -266,6 +275,14 @@ void Error_Handler(void);
 #define ADC_I_SUPPLY_CS_PIN 5
 #define ADC_U_SUPPLY_CS_PIN 6
 #define ADC_U_BAT_CS_PIN 7
+
+
+// coefficients
+#define I_SERVO_COEFF 1.007326f
+#define I_MANIP_COEFF 8.058608f
+#define I_5V_POW_COEFF 4.029304f
+#define I_3V3_POW_COEFF 1.007326f
+#define I_STANDBY_COEFF 1.007326f
 
 
 /* USER CODE END Private defines */

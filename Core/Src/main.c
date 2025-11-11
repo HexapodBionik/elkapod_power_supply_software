@@ -44,6 +44,7 @@
 /* Private define ------------------------------------------------------------*/
 /* USER CODE BEGIN PD */
 
+// I2C addresses
 #define EXPANDER1_ADDRESS 0x70
 #define EXPANDER2_ADDRESS 0x72
 
@@ -55,8 +56,11 @@
 
 #define CONV_EN_OC_DELAY 50
 
+// ADCs and filters configuration
 #define SPI_ADC_COUNT 8
 #define SPI_ADC_AVG_SAMPLES 10
+
+#define ADC_AVG_SAMPLES 10
 
 
 /* USER CODE END PD */
@@ -69,6 +73,8 @@
 /* Private variables ---------------------------------------------------------*/
 
 /* USER CODE BEGIN PV */
+
+// peripherals structures
 I2C_Manager hi2c2_mgr;
 
 PCF8574_HandleTypeDef expander1;
@@ -81,15 +87,7 @@ MCP4552_HandleTypeDef pot2;
 MCP4552_HandleTypeDef pot3;
 MCP4552_HandleTypeDef pot4;
 
-//ADC121S021_HandleTypeDef adc1;
-//ADC121S021_HandleTypeDef adc2;
-//ADC121S021_HandleTypeDef adc3;
-//ADC121S021_HandleTypeDef adc4;
-//ADC121S021_HandleTypeDef adc5;
-//ADC121S021_HandleTypeDef adc_I_supply;
-//ADC121S021_HandleTypeDef adc_U_supply;
-//ADC121S021_HandleTypeDef adc_U_bat;
-
+// buffers and variables for SPI ADCs
 uint16_t spi_adc_samples[SPI_ADC_COUNT][SPI_ADC_AVG_SAMPLES] = {0};
 uint8_t spi_adc_sample_index[SPI_ADC_COUNT] = {0};
 uint16_t spi_adc_avg_values[SPI_ADC_COUNT] = {0};
@@ -97,27 +95,21 @@ uint16_t spi_adc_avg_values[SPI_ADC_COUNT] = {0};
 volatile uint8_t spi_current_adc = 0;
 volatile uint8_t spi_adc_conversion_in_progress = 0;
 
+// buffers and variables for STM ADCs
+uint16_t adc1_buf[ADC1_CHANNELS] = {0};
+uint16_t adc3_buf[ADC3_CHANNELS] = {0};
 
-uint16_t adc1_buf[ADC1_CHANNELS];
+uint16_t adc1_samples[ADC1_CHANNELS][ADC_AVG_SAMPLES] = {0};
+uint16_t adc3_samples[ADC3_CHANNELS][ADC_AVG_SAMPLES] = {0};
 
-uint16_t I_servo1_adc_value = 1;
-uint16_t I_servo2_adc_value = 1;
-uint16_t I_servo3_adc_value = 1;
-uint16_t I_servo4_adc_value = 1;
-uint16_t I_servo5_adc_value = 1;
-uint16_t I_servo6_adc_value = 1;
-uint16_t I_servo7_adc_value = 1;
-uint16_t I_servo8_adc_value = 1;
-uint16_t I_servo9_adc_value = 1;
-uint16_t I_servo10_adc_value = 1;
-uint16_t I_servo11_adc_value = 1;
-uint16_t I_servo12_adc_value = 1;
-uint16_t I_servo13_adc_value = 1;
-uint16_t I_servo14_adc_value = 1;
-uint16_t I_servo15_adc_value = 1;
-uint16_t I_servo16_adc_value = 1;
-uint16_t I_servo17_adc_value = 1;
-uint16_t I_servo18_adc_value = 1;
+uint8_t adc1_index = 0;
+uint8_t adc3_index = 0;
+
+uint8_t adc1_done_samples = 0;
+uint8_t adc3_done_samples = 0;
+
+
+
 
 uint16_t adc_test_value1 = 0;
 uint16_t adc_test_value3 = 0;
@@ -130,6 +122,7 @@ uint8_t conv5_oc_status = 0;
 
 uint32_t last_tick_toggle_en_conv = 0;
 
+// measured values
 uint16_t adc1_value = 0;
 uint16_t adc2_value = 0;
 uint16_t adc3_value = 0;
@@ -139,7 +132,12 @@ uint16_t adc_I_supply_value = 0;
 uint16_t adc_U_supply_value = 0;
 uint16_t adc_U_bat_value = 0;
 
-volatile uint8_t adc5_ready = 0;
+float servo_currents[18] = {0.0f};
+float U_temp = 0.0f;
+float I_manip_sense = 0.0f;
+float I_5V_sense = 0.0f;
+float I_3V3_sense = 0.0f;
+float I_standby_sense = 0.0f;
 
 /* USER CODE END PV */
 
@@ -170,6 +168,17 @@ void adc_read_callback(void* user, HAL_StatusTypeDef status, uint16_t value)
     }
     spi_adc_conversion_in_progress = 0;
 }
+
+
+static inline float adc_to_current(uint16_t adc_val, float scale) {
+    return (float)adc_val * scale;
+}
+
+
+static inline float adc_to_voltage(uint16_t adc_val, float scale) {
+    return (float)adc_val * scale;
+}
+
 /* USER CODE END 0 */
 
 /**
@@ -222,9 +231,12 @@ int main(void)
   MX_CRC_Init();
   MX_TIM3_Init();
   MX_TIM8_Init();
-  MX_TIM6_Init();
   MX_TIM17_Init();
+  MX_TIM7_Init();
   /* USER CODE BEGIN 2 */
+  HAL_ADCEx_Calibration_Start(&hadc1, ADC_SINGLE_ENDED);
+  HAL_ADCEx_Calibration_Start(&hadc3, ADC_SINGLE_ENDED);
+
   I2C_Manager_Init(&hi2c2_mgr, &hi2c2);
 
 
@@ -302,6 +314,9 @@ int main(void)
 	// --- PWM FAN (500 Hz) ---
 	HAL_TIM_PWM_Start(&htim8, TIM_CHANNEL_4);
 	__HAL_TIM_SET_COMPARE(&htim8, TIM_CHANNEL_4, 500); // 50% duty (500 / 999)
+
+	// STM ADCs start
+	HAL_TIM_Base_Start_IT(&htim7);
 
 //	// --- BUZZER (1 kHz) ---
 //	HAL_TIM_PWM_Start(&htim3, TIM_CHANNEL_1);
@@ -383,7 +398,7 @@ int main(void)
 //		main_iteration = 0;
 //	}
 
-	mcp_read_value = MCP4552_read_volatile(&pot4);
+//	mcp_read_value = MCP4552_read_volatile(&pot4);
 //	MCP4552_read_volatile(&pot1);
 //	MCP4552_read_volatile(&pot2);
 //	MCP4552_read_volatile(&pot3);
@@ -438,8 +453,8 @@ int main(void)
 //	}
 
 
-	if (HAL_GPIO_ReadPin(SW_BAT_INDICATOR_GPIO_Port, SW_BAT_INDICATOR_Pin) == GPIO_PIN_RESET) {
-		if (pot_value == 1) {
+	if(HAL_GPIO_ReadPin(SW_BAT_INDICATOR_GPIO_Port, SW_BAT_INDICATOR_Pin) == GPIO_PIN_RESET) {
+		if(pot_value == 1) {
 			for (uint16_t i = 0; i <= 255; i++) {
 				MCP4552_increment_volatile(&pot1);
 				MCP4552_increment_volatile(&pot2);
@@ -472,24 +487,27 @@ int main(void)
 
 
 
-	HAL_ADC_Start(&hadc1);
+//	HAL_ADC_Start(&hadc1);
+//
+//	if (HAL_ADC_PollForConversion(&hadc1, 10) == HAL_OK)
+//	{
+//		adc_test_value1 = HAL_ADC_GetValue(&hadc1);
+//
+//	}
+//
+//	HAL_ADC_Stop(&hadc1);
+//
+//	HAL_ADC_Start(&hadc3);
+//
+//	if (HAL_ADC_PollForConversion(&hadc3, 10) == HAL_OK)
+//	{
+//		adc_test_value3 = HAL_ADC_GetValue(&hadc3);
+//	}
+//
+//	HAL_ADC_Stop(&hadc3);
 
-	if (HAL_ADC_PollForConversion(&hadc1, 10) == HAL_OK)
-	{
-		adc_test_value1 = HAL_ADC_GetValue(&hadc1);
+	HAL_ADC_Start_DMA(&hadc1, (uint32_t*)adc1_buf, ADC1_CHANNELS);
 
-	}
-
-	HAL_ADC_Stop(&hadc1);
-
-	HAL_ADC_Start(&hadc3);
-
-	if (HAL_ADC_PollForConversion(&hadc3, 10) == HAL_OK)
-	{
-		adc_test_value3 = HAL_ADC_GetValue(&hadc3);
-	}
-
-	HAL_ADC_Stop(&hadc3);
 
 //	HAL_Delay(100);
 
@@ -546,7 +564,7 @@ int main(void)
 //	MCP4552_decrement_volatile(&pot4);
 
 
-	read_value = PCF7485_read_pin_blocking(&expander1, 1);
+//	read_value = PCF7485_read_pin_blocking(&expander1, 1);
 //	PCF7485_read_pin_blocking(&expander1, 2);
 //	PCF7485_read_pin_blocking(&expander1, 3);
 //	PCF7485_read_pin_blocking(&expander1, 4);
@@ -669,6 +687,7 @@ void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin) {
 
 
 void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim) {
+	// timer for SPI ADCs conversions
     if(htim->Instance == TIM17) {
         if(!spi_adc_conversion_in_progress) {
 			if(ADC121S021_read_start(&spi_adcs[spi_current_adc], adc_read_callback,
@@ -682,29 +701,87 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim) {
 			}
         }
     }
+
+    // timer for STM ADCs conversions
+    if(htim->Instance == TIM7) {
+		HAL_ADC_Start_DMA(&hadc1, (uint32_t*)adc1_buf, ADC1_CHANNELS);
+	}
+
 }
 
-//void HAL_ADC_ConvCpltCallback(ADC_HandleTypeDef* hadc) {
-//    if (hadc->Instance == ADC1) {
-//    	I_servo3_adc_value = adc1_buf[I_SERVO3_ADC1_channel];
-//		I_servo4_adc_value = adc1_buf[I_SERVO4_ADC1_channel];
-//		I_servo5_adc_value = adc1_buf[I_SERVO5_ADC1_channel];
-//		I_servo6_adc_value = adc1_buf[I_SERVO6_ADC1_channel];
-//		I_servo7_adc_value = adc1_buf[I_SERVO7_ADC1_channel];
-//		I_servo8_adc_value = adc1_buf[I_SERVO8_ADC1_channel];
-//		I_servo9_adc_value = adc1_buf[I_SERVO9_ADC1_channel];
-//		I_servo10_adc_value = adc1_buf[I_SERVO10_ADC1_channel];
-//		I_servo11_adc_value = adc1_buf[I_SERVO11_ADC1_channel];
-//		I_servo12_adc_value = adc1_buf[I_SERVO12_ADC1_channel];
-//		I_servo13_adc_value = adc1_buf[I_SERVO13_ADC1_channel];
-//		I_servo14_adc_value = adc1_buf[I_SERVO14_ADC1_channel];
-//		I_servo15_adc_value = adc1_buf[I_SERVO15_ADC1_channel];
-//		I_servo16_adc_value = adc1_buf[I_SERVO16_ADC1_channel];
-//		I_servo17_adc_value = adc1_buf[I_SERVO17_ADC1_channel];
-//		I_servo18_adc_value = adc1_buf[I_SERVO18_ADC1_channel];
-//    }
-//
-//}
+
+void HAL_ADC_ConvCpltCallback(ADC_HandleTypeDef *hadc) {
+	if(hadc->Instance == ADC1) {
+		for(uint8_t ch = 0; ch < ADC1_CHANNELS; ch++)
+			adc1_samples[ch][adc1_index] = adc1_buf[ch];
+
+		adc1_index = (adc1_index + 1) % ADC_AVG_SAMPLES;
+		adc1_done_samples++;
+
+		if(adc1_done_samples == ADC_AVG_SAMPLES) {
+			float avg[ADC1_CHANNELS] = {0};
+			for (uint8_t ch = 0; ch < ADC1_CHANNELS; ch++) {
+				uint32_t sum = 0;
+				for (uint8_t i = 0; i < ADC_AVG_SAMPLES; i++) {
+					sum += adc1_samples[ch][i];
+				}
+				avg[ch] = (float)sum / ADC_AVG_SAMPLES;
+			}
+
+			servo_currents[2]  = adc_to_current(avg[I_SERVO3_ADC1_rank],  I_SERVO_COEFF);
+			servo_currents[3]  = adc_to_current(avg[I_SERVO4_ADC1_rank],  I_SERVO_COEFF);
+			servo_currents[4]  = adc_to_current(avg[I_SERVO5_ADC1_rank],  I_SERVO_COEFF);
+			servo_currents[5]  = adc_to_current(avg[I_SERVO6_ADC1_rank],  I_SERVO_COEFF);
+			servo_currents[6]  = adc_to_current(avg[I_SERVO7_ADC1_rank],  I_SERVO_COEFF);
+			servo_currents[7]  = adc_to_current(avg[I_SERVO8_ADC1_rank],  I_SERVO_COEFF);
+			servo_currents[8]  = adc_to_current(avg[I_SERVO9_ADC1_rank],  I_SERVO_COEFF);
+			servo_currents[9]  = adc_to_current(avg[I_SERVO10_ADC1_rank], I_SERVO_COEFF);
+			servo_currents[10] = adc_to_current(avg[I_SERVO11_ADC1_rank], I_SERVO_COEFF);
+			servo_currents[11] = adc_to_current(avg[I_SERVO12_ADC1_rank], I_SERVO_COEFF);
+			servo_currents[12] = adc_to_current(avg[I_SERVO13_ADC1_rank], I_SERVO_COEFF);
+			servo_currents[13] = adc_to_current(avg[I_SERVO14_ADC1_rank], I_SERVO_COEFF);
+			servo_currents[14] = adc_to_current(avg[I_SERVO15_ADC1_rank], I_SERVO_COEFF);
+			servo_currents[15] = adc_to_current(avg[I_SERVO16_ADC1_rank], I_SERVO_COEFF);
+			servo_currents[16] = adc_to_current(avg[I_SERVO17_ADC1_rank], I_SERVO_COEFF);
+			servo_currents[17] = adc_to_current(avg[I_SERVO18_ADC1_rank], I_SERVO_COEFF);
+
+			adc1_done_samples = 0;
+		}
+
+		HAL_ADC_Start_DMA(&hadc3, (uint32_t*)adc3_buf, ADC3_CHANNELS);
+
+	} else if (hadc->Instance == ADC3) {
+		for (uint8_t ch = 0; ch < ADC3_CHANNELS; ch++) {
+			adc3_samples[ch][adc3_index] = adc3_buf[ch];
+		}
+
+		adc3_index = (adc3_index + 1) % ADC_AVG_SAMPLES;
+		adc3_done_samples++;
+
+		if(adc3_done_samples == ADC_AVG_SAMPLES) {
+			float avg[ADC3_CHANNELS] = {0};
+			for (uint8_t ch = 0; ch < ADC3_CHANNELS; ch++) {
+				uint32_t sum = 0;
+				for (uint8_t i = 0; i < ADC_AVG_SAMPLES; i++) {
+					sum += adc3_samples[ch][i];
+				}
+				avg[ch] = (float)sum / ADC_AVG_SAMPLES;
+			}
+
+			U_temp         	  = adc_to_voltage(avg[U_TEMP_ADC3_rank], 0.001f);
+			I_manip_sense  	  = adc_to_current(avg[I_MANIP_SENSE_ADC3_rank], I_MANIP_COEFF);
+			I_5V_sense     	  = adc_to_current(avg[I_5V_POW_SENSE_ADC3_rank], I_3V3_POW_COEFF);
+			I_3V3_sense    	  = adc_to_current(avg[I_3V3_POW_SENSE_ADC3_rank], I_3V3_POW_COEFF);
+			I_standby_sense	  = adc_to_current(avg[I_STANDBY_SENSE_ADC3_rank], I_STANDBY_COEFF);
+			servo_currents[0] = adc_to_current(avg[I_SERVO1_ADC3_rank], I_SERVO_COEFF);
+			servo_currents[1] = adc_to_current(avg[I_SERVO2_ADC3_rank], I_SERVO_COEFF);
+
+			adc3_done_samples = 0;
+		}
+	}
+}
+
+
 
 /* USER CODE END 4 */
 
