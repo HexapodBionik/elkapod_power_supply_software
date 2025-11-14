@@ -295,7 +295,13 @@ void Error_Handler(void);
 #define U_BAT_ADC_COEFF 0.006467964f
 
 
+// CAN ID
+#define CAN_ID 100
 
+
+// CAN commands
+#define CAN_CMD_GET_SERVO_CURRENT_1_3_REQ 0b00100000
+#define CAN_CMD_GET_SERVO_CURRENT_1_3_ACK 0b00100001
 
 /* USER CODE END Private defines */
 

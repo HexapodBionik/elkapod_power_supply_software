@@ -33,6 +33,7 @@
 #include "adc121s021.h"
 #include "i2c_manager.h"
 #include "can_app.h"
+#include "can_logic.h"
 
 
 /* USER CODE END Includes */
@@ -556,9 +557,6 @@ int main(void)
 //	PCF7485_read_pin_blocking(&expander1, 4);
 
 	HAL_Delay(1);
-
-	CAN_App_SendTest();
-	HAL_Delay(200);
 
 
 

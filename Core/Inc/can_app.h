@@ -3,15 +3,10 @@
 
 #include "main.h"
 #include "can.h"
+#include "can_logic.h"
 
-#define CAN_RX_BUF_SIZE 8  //max 8B
 
-extern uint8_t CAN_LastRxData[CAN_RX_BUF_SIZE];
-extern uint8_t CAN_LastRxLen;
-extern uint32_t CAN_LastRxID;
-extern CAN_RxHeaderTypeDef CAN_LastRxHeader;
-
-void CAN_App_Init(void);
-void CAN_App_SendTest(void);
+HAL_StatusTypeDef CAN_App_Init(void);
+HAL_StatusTypeDef CAN_App_SendResponse(uint8_t opcode, uint8_t *payload, uint8_t len);
 
 #endif
