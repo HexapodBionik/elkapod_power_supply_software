@@ -79,6 +79,12 @@ void MX_GPIO_Init(void)
                           |LED_STATUS1_Pin|BAT_INDICATOR1_Pin|BAT_INDICATOR2_Pin|BAT_INDICATOR3_Pin
                           |OPTIONAL_Pin|MUX_B_Pin|MUX_A_Pin, GPIO_PIN_RESET);
 
+  /*Configure GPIO pin : SW_POWER_ON_Pin */
+  GPIO_InitStruct.Pin = SW_POWER_ON_Pin;
+  GPIO_InitStruct.Mode = GPIO_MODE_IT_FALLING;
+  GPIO_InitStruct.Pull = GPIO_NOPULL;
+  HAL_GPIO_Init(SW_POWER_ON_GPIO_Port, &GPIO_InitStruct);
+
   /*Configure GPIO pins : CONV4_OC_Pin CONV5_OC_Pin */
   GPIO_InitStruct.Pin = CONV4_OC_Pin|CONV5_OC_Pin;
   GPIO_InitStruct.Mode = GPIO_MODE_IT_RISING;

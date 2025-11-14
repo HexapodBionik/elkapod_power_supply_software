@@ -61,6 +61,7 @@ void Error_Handler(void);
 #define BUZZER_GPIO_Port GPIOE
 #define SW_POWER_ON_Pin GPIO_PIN_13
 #define SW_POWER_ON_GPIO_Port GPIOC
+#define SW_POWER_ON_EXTI_IRQn EXTI15_10_IRQn
 #define CONV4_OC_Pin GPIO_PIN_14
 #define CONV4_OC_GPIO_Port GPIOC
 #define CONV4_OC_EXTI_IRQn EXTI15_10_IRQn

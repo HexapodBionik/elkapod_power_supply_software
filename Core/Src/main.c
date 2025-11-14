@@ -20,7 +20,6 @@
 #include "main.h"
 #include "adc.h"
 #include "can.h"
-#include "crc.h"
 #include "dma.h"
 #include "i2c.h"
 #include "spi.h"
@@ -33,6 +32,8 @@
 #include "mcp4552.h"
 #include "adc121s021.h"
 #include "i2c_manager.h"
+#include "can_app.h"
+
 
 /* USER CODE END Includes */
 
@@ -108,20 +109,6 @@ uint8_t adc3_index = 0;
 uint8_t adc1_done_samples = 0;
 uint8_t adc3_done_samples = 0;
 
-
-
-
-uint16_t adc_test_value1 = 0;
-uint16_t adc_test_value3 = 0;
-
-uint8_t conv1_oc_status = 0;
-uint8_t conv2_oc_status = 0;
-uint8_t conv3_oc_status = 0;
-uint8_t conv4_oc_status = 0;
-uint8_t conv5_oc_status = 0;
-
-uint32_t last_tick_toggle_en_conv = 0;
-
 // measured values
 float U_converter1 = 0.0f;
 float U_converter2 = 0.0f;
@@ -138,6 +125,16 @@ float I_manip = 0.0f;
 float I_5V_pow = 0.0f;
 float I_3V3_pow = 0.0f;
 float I_standby = 0.0f;
+
+// flags etc
+uint8_t conv1_oc_status = 0;
+uint8_t conv2_oc_status = 0;
+uint8_t conv3_oc_status = 0;
+uint8_t conv4_oc_status = 0;
+uint8_t conv5_oc_status = 0;
+
+uint32_t last_tick_toggle_en_conv = 0;
+volatile uint8_t system_in_sleep = 0;
 
 /* USER CODE END PV */
 
@@ -192,6 +189,20 @@ void adc_read_callback(void* user, HAL_StatusTypeDef status, uint16_t value)
 }
 
 
+void Wakeup_From_Stop1(void) {
+    HAL_ResumeTick();
+    SystemClock_Config();
+    system_in_sleep = 0;
+}
+
+
+void EnterStop1(void) {
+	system_in_sleep = 1;
+    HAL_SuspendTick();
+    HAL_PWR_EnterSTOPMode(PWR_LOWPOWERREGULATOR_ON, PWR_STOPENTRY_WFI);
+}
+
+
 /* USER CODE END 0 */
 
 /**
@@ -241,7 +252,6 @@ int main(void)
   MX_I2C1_Init();
   MX_I2C2_Init();
   MX_SPI3_Init();
-  MX_CRC_Init();
   MX_TIM3_Init();
   MX_TIM8_Init();
   MX_TIM17_Init();
@@ -343,6 +353,9 @@ int main(void)
 	HAL_Delay(50);
 
 	HAL_TIM_Base_Start_IT(&htim17);
+	CAN_App_Init();
+
+
 
 
   /* USER CODE END 2 */
@@ -439,6 +452,9 @@ int main(void)
 			HAL_GPIO_WritePin(LED_CONV4_GPIO_Port, LED_CONV4_Pin, GPIO_PIN_RESET);
 			HAL_GPIO_WritePin(LED_CONV5_GPIO_Port, LED_CONV5_Pin, GPIO_PIN_RESET);
 			converters_en = 0;
+
+			HAL_Delay(1);
+			EnterStop1();
 		}
 	}
 
@@ -541,6 +557,9 @@ int main(void)
 
 	HAL_Delay(1);
 
+	CAN_App_SendTest();
+	HAL_Delay(200);
+
 
 
     /* USER CODE END WHILE */
@@ -626,9 +645,13 @@ void PeriphCommonClock_Config(void)
 /* USER CODE BEGIN 4 */
 
 void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin) {
+	if (GPIO_Pin == SW_POWER_ON_Pin) {
+		if (system_in_sleep == 1) {
+			Wakeup_From_Stop1();
+		}
+	}
 	if (HAL_GetTick() - last_tick_toggle_en_conv > CONV_EN_OC_DELAY) {
-		switch (GPIO_Pin)
-		{
+		switch (GPIO_Pin) {
 			case CONV1_OC_Pin:  // PB9
 				conv1_oc_status = 1;
 				break;

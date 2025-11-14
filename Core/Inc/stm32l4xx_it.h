@@ -61,6 +61,7 @@ void DMA1_Channel1_IRQHandler(void);
 void DMA1_Channel3_IRQHandler(void);
 void DMA1_Channel4_IRQHandler(void);
 void DMA1_Channel5_IRQHandler(void);
+void CAN1_RX0_IRQHandler(void);
 void EXTI9_5_IRQHandler(void);
 void TIM1_TRG_COM_TIM17_IRQHandler(void);
 void I2C2_EV_IRQHandler(void);
