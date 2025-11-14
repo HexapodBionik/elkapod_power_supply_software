@@ -225,11 +225,11 @@ void Error_Handler(void);
 /* USER CODE BEGIN Private defines */
 
 // amount of peripherals
-#define PCF_MAX_INSTANCES 2
-#define ADC_MAX_INSTANCES 8
-
 #define ADC1_CHANNELS 16
 #define ADC3_CHANNELS 7
+
+#define PCF_MAX_INSTANCES 2
+#define ADC_MAX_INSTANCES 8
 
 
 // pin mapping
@@ -283,6 +283,17 @@ void Error_Handler(void);
 #define I_5V_POW_COEFF 4.029304f
 #define I_3V3_POW_COEFF 1.007326f
 #define I_STANDBY_COEFF 1.007326f
+
+#define U_CONVERTER1_COEFF 0.003643975f
+#define U_CONVERTER2_COEFF 0.00362064f
+#define U_CONVERTER3_COEFF 0.003628535f
+#define U_CONVERTER4_COEFF 0.006223229f
+#define U_CONVERTER5_COEFF 0.003539223f
+#define I_SUPPLY_COEFF 0.015701314f
+#define U_SUPPLY_COEFF 0.006666997f
+#define U_BAT_ADC_COEFF 0.006467964f
+
+
 
 
 /* USER CODE END Private defines */

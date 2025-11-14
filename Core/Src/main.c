@@ -90,7 +90,7 @@ MCP4552_HandleTypeDef pot4;
 // buffers and variables for SPI ADCs
 uint16_t spi_adc_samples[SPI_ADC_COUNT][SPI_ADC_AVG_SAMPLES] = {0};
 uint8_t spi_adc_sample_index[SPI_ADC_COUNT] = {0};
-uint16_t spi_adc_avg_values[SPI_ADC_COUNT] = {0};
+float spi_adc_avg_values[SPI_ADC_COUNT] = {0.0f};
 
 volatile uint8_t spi_current_adc = 0;
 volatile uint8_t spi_adc_conversion_in_progress = 0;
@@ -123,21 +123,21 @@ uint8_t conv5_oc_status = 0;
 uint32_t last_tick_toggle_en_conv = 0;
 
 // measured values
-uint16_t adc1_value = 0;
-uint16_t adc2_value = 0;
-uint16_t adc3_value = 0;
-uint16_t adc4_value = 0;
-uint16_t adc5_value = 0;
-uint16_t adc_I_supply_value = 0;
-uint16_t adc_U_supply_value = 0;
-uint16_t adc_U_bat_value = 0;
+float U_converter1 = 0.0f;
+float U_converter2 = 0.0f;
+float U_converter3 = 0.0f;
+float U_converter4 = 0.0f;
+float U_converter5 = 0.0f;
+float I_supply = 0.0f;
+float U_supply = 0.0f;
+float U_bat_ADC = 0.0f;
 
 float servo_currents[18] = {0.0f};
 float U_temp = 0.0f;
-float I_manip_sense = 0.0f;
-float I_5V_sense = 0.0f;
-float I_3V3_sense = 0.0f;
-float I_standby_sense = 0.0f;
+float I_manip = 0.0f;
+float I_5V_pow = 0.0f;
+float I_3V3_pow = 0.0f;
+float I_standby = 0.0f;
 
 /* USER CODE END PV */
 
@@ -150,6 +150,16 @@ void PeriphCommonClock_Config(void);
 
 /* Private user code ---------------------------------------------------------*/
 /* USER CODE BEGIN 0 */
+static inline float adc_to_current(uint16_t adc_val, float scale) {
+    return (float)adc_val * scale;
+}
+
+
+static inline float adc_to_voltage(uint16_t adc_val, float scale) {
+    return (float)adc_val * scale;
+}
+
+
 void adc_read_callback(void* user, HAL_StatusTypeDef status, uint16_t value)
 {
     uint8_t adc_index = (uint8_t)(uintptr_t)user;
@@ -160,24 +170,27 @@ void adc_read_callback(void* user, HAL_StatusTypeDef status, uint16_t value)
         spi_adc_sample_index[adc_index]++;
         if(spi_adc_sample_index[adc_index] >= SPI_ADC_AVG_SAMPLES) {
             spi_adc_sample_index[adc_index] = 0;
+
             uint32_t sum = 0;
             for(uint8_t i = 0; i < SPI_ADC_AVG_SAMPLES; i++)
                 sum += spi_adc_samples[adc_index][i];
-            spi_adc_avg_values[adc_index] = sum / SPI_ADC_AVG_SAMPLES;
+            spi_adc_avg_values[adc_index] = (float)sum / SPI_ADC_AVG_SAMPLES;
+
+            if(adc_index >= SPI_ADC_COUNT - 1) {
+            	U_converter1 = adc_to_voltage(spi_adc_avg_values[ADC1_CS_PIN], U_CONVERTER1_COEFF);
+            	U_converter2 = adc_to_voltage(spi_adc_avg_values[ADC2_CS_PIN], U_CONVERTER2_COEFF);
+            	U_converter3 = adc_to_voltage(spi_adc_avg_values[ADC3_CS_PIN], U_CONVERTER3_COEFF);
+            	U_converter4 = adc_to_voltage(spi_adc_avg_values[ADC4_CS_PIN], U_CONVERTER4_COEFF);
+            	U_converter5 = adc_to_voltage(spi_adc_avg_values[ADC5_CS_PIN], U_CONVERTER5_COEFF);
+            	I_supply 	 = adc_to_voltage(spi_adc_avg_values[ADC_I_SUPPLY_CS_PIN], I_SUPPLY_COEFF);
+            	U_supply	 = adc_to_voltage(spi_adc_avg_values[ADC_U_SUPPLY_CS_PIN], U_SUPPLY_COEFF);
+            	U_bat_ADC	 = adc_to_voltage(spi_adc_avg_values[ADC_U_BAT_CS_PIN], U_BAT_ADC_COEFF);
+            }
         }
     }
     spi_adc_conversion_in_progress = 0;
 }
 
-
-static inline float adc_to_current(uint16_t adc_val, float scale) {
-    return (float)adc_val * scale;
-}
-
-
-static inline float adc_to_voltage(uint16_t adc_val, float scale) {
-    return (float)adc_val * scale;
-}
 
 /* USER CODE END 0 */
 
@@ -322,15 +335,6 @@ int main(void)
 //	HAL_TIM_PWM_Start(&htim3, TIM_CHANNEL_1);
 //	__HAL_TIM_SET_COMPARE(&htim3, TIM_CHANNEL_1, 500); // 50% duty cycle
 
-
-//	ADC121S021_init(&adc1, &hspi3, &expander2, ADC1_CS_PIN);
-//	ADC121S021_init(&adc2, &hspi3, &expander2, ADC2_CS_PIN);
-//	ADC121S021_init(&adc3, &hspi3, &expander2, ADC3_CS_PIN);
-//	ADC121S021_init(&adc4, &hspi3, &expander2, ADC4_CS_PIN);
-//	ADC121S021_init(&adc5, &hspi3, &expander2, ADC5_CS_PIN);
-//	ADC121S021_init(&adc_I_supply, &hspi3, &expander2, ADC_I_SUPPLY_CS_PIN);
-//	ADC121S021_init(&adc_U_supply, &hspi3, &expander2, ADC_U_SUPPLY_CS_PIN);
-//	ADC121S021_init(&adc_U_bat, &hspi3, &expander2, ADC_U_BAT_CS_PIN);
 
 	for (uint8_t i = 0; i < SPI_ADC_COUNT; i++) {
 	        ADC121S021_init(&spi_adcs[i], &hspi3, &expander2, i); // pin i na PCF
@@ -487,25 +491,6 @@ int main(void)
 
 
 
-//	HAL_ADC_Start(&hadc1);
-//
-//	if (HAL_ADC_PollForConversion(&hadc1, 10) == HAL_OK)
-//	{
-//		adc_test_value1 = HAL_ADC_GetValue(&hadc1);
-//
-//	}
-//
-//	HAL_ADC_Stop(&hadc1);
-//
-//	HAL_ADC_Start(&hadc3);
-//
-//	if (HAL_ADC_PollForConversion(&hadc3, 10) == HAL_OK)
-//	{
-//		adc_test_value3 = HAL_ADC_GetValue(&hadc3);
-//	}
-//
-//	HAL_ADC_Stop(&hadc3);
-
 	HAL_ADC_Start_DMA(&hadc1, (uint32_t*)adc1_buf, ADC1_CHANNELS);
 
 
@@ -535,22 +520,7 @@ int main(void)
 //	adc_U_bat_value = ADC121S021_read(&adc_U_bat);
 
 
-//	if (ADC121S021_read_start(&adc5, adc_read_callback, NULL) == HAL_OK)
-//	{
-//		while(!adc5_ready);
-//
-//		adc5_ready = 0;
-//		adc5_read_value = adc5_value;
-//		HAL_Delay(100);
-//
-//	}
-//	else {
-//		HAL_Delay(1);
-//	}
 
-
-
-//	HAL_Delay(100);
 	main_iteration++;
 
 //	MCP4552_increment_volatile(&pot1);
@@ -769,10 +739,10 @@ void HAL_ADC_ConvCpltCallback(ADC_HandleTypeDef *hadc) {
 			}
 
 			U_temp         	  = adc_to_voltage(avg[U_TEMP_ADC3_rank], 0.001f);
-			I_manip_sense  	  = adc_to_current(avg[I_MANIP_SENSE_ADC3_rank], I_MANIP_COEFF);
-			I_5V_sense     	  = adc_to_current(avg[I_5V_POW_SENSE_ADC3_rank], I_3V3_POW_COEFF);
-			I_3V3_sense    	  = adc_to_current(avg[I_3V3_POW_SENSE_ADC3_rank], I_3V3_POW_COEFF);
-			I_standby_sense	  = adc_to_current(avg[I_STANDBY_SENSE_ADC3_rank], I_STANDBY_COEFF);
+			I_manip  	  	  = adc_to_current(avg[I_MANIP_SENSE_ADC3_rank], I_MANIP_COEFF);
+			I_5V_pow    	  = adc_to_current(avg[I_5V_POW_SENSE_ADC3_rank], I_5V_POW_COEFF);
+			I_3V3_pow    	  = adc_to_current(avg[I_3V3_POW_SENSE_ADC3_rank], I_3V3_POW_COEFF);
+			I_standby		  = adc_to_current(avg[I_STANDBY_SENSE_ADC3_rank], I_STANDBY_COEFF);
 			servo_currents[0] = adc_to_current(avg[I_SERVO1_ADC3_rank], I_SERVO_COEFF);
 			servo_currents[1] = adc_to_current(avg[I_SERVO2_ADC3_rank], I_SERVO_COEFF);
 
