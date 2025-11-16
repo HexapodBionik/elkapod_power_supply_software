@@ -110,6 +110,8 @@ uint8_t adc3_index = 0;
 uint8_t adc1_done_samples = 0;
 uint8_t adc3_done_samples = 0;
 
+uint8_t measured_temperature = 0;
+
 // measured values
 float U_converter1 = 0.0f;
 float U_converter2 = 0.0f;
@@ -121,11 +123,12 @@ float U_supply = 0.0f;
 float U_bat_ADC = 0.0f;
 
 float servo_currents[18] = {0.0f};
-float U_temp = 0.0f;
 float I_manip = 0.0f;
 float I_5V_pow = 0.0f;
 float I_3V3_pow = 0.0f;
 float I_standby = 0.0f;
+
+float temperatures[3] = {0.0f};
 
 // flags etc
 uint8_t conv1_oc_status = 0;
@@ -148,6 +151,8 @@ void PeriphCommonClock_Config(void);
 
 /* Private user code ---------------------------------------------------------*/
 /* USER CODE BEGIN 0 */
+void spi_adc_read_callback(void* user, HAL_StatusTypeDef status, uint16_t value);
+
 static inline float adc_to_current(uint16_t adc_val, float scale) {
     return (float)adc_val * scale;
 }
@@ -158,35 +163,8 @@ static inline float adc_to_voltage(uint16_t adc_val, float scale) {
 }
 
 
-void adc_read_callback(void* user, HAL_StatusTypeDef status, uint16_t value)
-{
-    uint8_t adc_index = (uint8_t)(uintptr_t)user;
-
-    if(status == HAL_OK) {
-        spi_adc_samples[adc_index][spi_adc_sample_index[adc_index]] = value;
-
-        spi_adc_sample_index[adc_index]++;
-        if(spi_adc_sample_index[adc_index] >= SPI_ADC_AVG_SAMPLES) {
-            spi_adc_sample_index[adc_index] = 0;
-
-            uint32_t sum = 0;
-            for(uint8_t i = 0; i < SPI_ADC_AVG_SAMPLES; i++)
-                sum += spi_adc_samples[adc_index][i];
-            spi_adc_avg_values[adc_index] = (float)sum / SPI_ADC_AVG_SAMPLES;
-
-            if(adc_index >= SPI_ADC_COUNT - 1) {
-            	U_converter1 = adc_to_voltage(spi_adc_avg_values[ADC1_CS_PIN], U_CONVERTER1_COEFF);
-            	U_converter2 = adc_to_voltage(spi_adc_avg_values[ADC2_CS_PIN], U_CONVERTER2_COEFF);
-            	U_converter3 = adc_to_voltage(spi_adc_avg_values[ADC3_CS_PIN], U_CONVERTER3_COEFF);
-            	U_converter4 = adc_to_voltage(spi_adc_avg_values[ADC4_CS_PIN], U_CONVERTER4_COEFF);
-            	U_converter5 = adc_to_voltage(spi_adc_avg_values[ADC5_CS_PIN], U_CONVERTER5_COEFF);
-            	I_supply 	 = adc_to_voltage(spi_adc_avg_values[ADC_I_SUPPLY_CS_PIN], I_SUPPLY_COEFF);
-            	U_supply	 = adc_to_voltage(spi_adc_avg_values[ADC_U_SUPPLY_CS_PIN], U_SUPPLY_COEFF);
-            	U_bat_ADC	 = adc_to_voltage(spi_adc_avg_values[ADC_U_BAT_CS_PIN], U_BAT_ADC_COEFF);
-            }
-        }
-    }
-    spi_adc_conversion_in_progress = 0;
+static inline float adc_to_temperature(uint16_t adc_val, float a, float b) {
+	return (((float)adc_val/4095.0f)*3.3f - b)/a;
 }
 
 
@@ -217,9 +195,6 @@ int main(void)
 
   uint8_t pot_value = 1;
   uint8_t converters_en = 1;
-  uint16_t read_value = 0;
-  uint16_t mcp_read_value = 0;
-  uint16_t adc5_read_value = 0;
 
 
 
@@ -354,7 +329,10 @@ int main(void)
 	HAL_Delay(50);
 
 	HAL_TIM_Base_Start_IT(&htim17);
-	CAN_App_Init();
+
+	if(CAN_App_Init(CAN_ID_MIN, CAN_ID_MAX) != HAL_OK) {
+		Error_Handler();
+	}
 
 
 
@@ -681,7 +659,7 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim) {
 	// timer for SPI ADCs conversions
     if(htim->Instance == TIM17) {
         if(!spi_adc_conversion_in_progress) {
-			if(ADC121S021_read_start(&spi_adcs[spi_current_adc], adc_read_callback,
+			if(ADC121S021_read_start(&spi_adcs[spi_current_adc], spi_adc_read_callback,
 									 (void*)(uintptr_t)spi_current_adc) == HAL_OK) {
 				spi_adc_conversion_in_progress = 1;
 				spi_current_adc++;
@@ -695,6 +673,20 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim) {
 
     // timer for STM ADCs conversions
     if(htim->Instance == TIM7) {
+    	switch(measured_temperature) {
+			case 0:
+				HAL_GPIO_WritePin(MUX_A_GPIO_Port, MUX_A_Pin, GPIO_PIN_RESET);
+				HAL_GPIO_WritePin(MUX_B_GPIO_Port, MUX_B_Pin, GPIO_PIN_RESET);
+				break;
+			case 1:
+				HAL_GPIO_WritePin(MUX_A_GPIO_Port, MUX_A_Pin, GPIO_PIN_SET);
+				HAL_GPIO_WritePin(MUX_B_GPIO_Port, MUX_B_Pin, GPIO_PIN_RESET);
+				break;
+			case 2:
+				HAL_GPIO_WritePin(MUX_A_GPIO_Port, MUX_A_Pin, GPIO_PIN_RESET);
+				HAL_GPIO_WritePin(MUX_B_GPIO_Port, MUX_B_Pin, GPIO_PIN_SET);
+				break;
+    	}
 		HAL_ADC_Start_DMA(&hadc1, (uint32_t*)adc1_buf, ADC1_CHANNELS);
 	}
 
@@ -759,7 +751,6 @@ void HAL_ADC_ConvCpltCallback(ADC_HandleTypeDef *hadc) {
 				avg[ch] = (float)sum / ADC_AVG_SAMPLES;
 			}
 
-			U_temp         	  = adc_to_voltage(avg[U_TEMP_ADC3_rank], 0.001f);
 			I_manip  	  	  = adc_to_current(avg[I_MANIP_SENSE_ADC3_rank], I_MANIP_COEFF);
 			I_5V_pow    	  = adc_to_current(avg[I_5V_POW_SENSE_ADC3_rank], I_5V_POW_COEFF);
 			I_3V3_pow    	  = adc_to_current(avg[I_3V3_POW_SENSE_ADC3_rank], I_3V3_POW_COEFF);
@@ -767,9 +758,48 @@ void HAL_ADC_ConvCpltCallback(ADC_HandleTypeDef *hadc) {
 			servo_currents[0] = adc_to_current(avg[I_SERVO1_ADC3_rank], I_SERVO_COEFF);
 			servo_currents[1] = adc_to_current(avg[I_SERVO2_ADC3_rank], I_SERVO_COEFF);
 
+			temperatures[measured_temperature] = adc_to_temperature(avg[U_TEMP_ADC3_rank],
+																	TEMP_SENSOR_COEFF_A,
+																	TEMP_SENSOR_COEFF_B);
 			adc3_done_samples = 0;
+
+			measured_temperature++;
+			if(measured_temperature >= 3) {
+				measured_temperature = 0;
+			}
 		}
 	}
+}
+
+
+void spi_adc_read_callback(void* user, HAL_StatusTypeDef status, uint16_t value) {
+    uint8_t adc_index = (uint8_t)(uintptr_t)user;
+
+    if(status == HAL_OK) {
+        spi_adc_samples[adc_index][spi_adc_sample_index[adc_index]] = value;
+
+        spi_adc_sample_index[adc_index]++;
+        if(spi_adc_sample_index[adc_index] >= SPI_ADC_AVG_SAMPLES) {
+            spi_adc_sample_index[adc_index] = 0;
+
+            uint32_t sum = 0;
+            for(uint8_t i = 0; i < SPI_ADC_AVG_SAMPLES; i++)
+                sum += spi_adc_samples[adc_index][i];
+            spi_adc_avg_values[adc_index] = (float)sum / SPI_ADC_AVG_SAMPLES;
+
+            if(adc_index >= SPI_ADC_COUNT - 1) {
+            	U_converter1 = adc_to_voltage(spi_adc_avg_values[ADC1_CS_PIN], U_CONVERTER1_COEFF);
+            	U_converter2 = adc_to_voltage(spi_adc_avg_values[ADC2_CS_PIN], U_CONVERTER2_COEFF);
+            	U_converter3 = adc_to_voltage(spi_adc_avg_values[ADC3_CS_PIN], U_CONVERTER3_COEFF);
+            	U_converter4 = adc_to_voltage(spi_adc_avg_values[ADC4_CS_PIN], U_CONVERTER4_COEFF);
+            	U_converter5 = adc_to_voltage(spi_adc_avg_values[ADC5_CS_PIN], U_CONVERTER5_COEFF);
+            	I_supply 	 = adc_to_voltage(spi_adc_avg_values[ADC_I_SUPPLY_CS_PIN], I_SUPPLY_COEFF);
+            	U_supply	 = adc_to_voltage(spi_adc_avg_values[ADC_U_SUPPLY_CS_PIN], U_SUPPLY_COEFF);
+            	U_bat_ADC	 = adc_to_voltage(spi_adc_avg_values[ADC_U_BAT_CS_PIN], U_BAT_ADC_COEFF);
+            }
+        }
+    }
+    spi_adc_conversion_in_progress = 0;
 }
 
 

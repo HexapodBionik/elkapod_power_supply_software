@@ -6,8 +6,8 @@
 
 
 
-void CAN_Logic_ProcessFrame(uint8_t *data, uint8_t len);
-void CAN_Logic_SendAck(uint8_t opcode, uint8_t *payload, uint8_t len);
+void CAN_Logic_HandleFrame(uint32_t id, uint8_t *data, uint8_t len);
+
 
 void CAN_Logic_Handle_GetCurrents_Servos_1_3(void);
 void CAN_Logic_Handle_GetCurrents_Servos_4_6(void);
@@ -22,5 +22,7 @@ void CAN_Logic_Handle_GetCurrents_I_STANDBY_I_SUPPLY(void);
 void CAN_Logic_Handle_GetVoltages_Converters_1_3(void);
 void CAN_Logic_Handle_GetVoltages_Converters_4_5(void);
 void CAN_Logic_Handle_GetVoltages_U_SUPPLY_U_BAT(void);
+
+void CAN_Logic_Handle_GetTemperatures(void);
 
 #endif

@@ -15,8 +15,10 @@ extern float I_supply;
 extern float U_supply;
 extern float U_bat_ADC;
 
+extern float temperatures[3];
 
-static void CAN_Logic_ReadServoGroup(uint8_t start_idx, uint8_t opcode_ack)
+
+static void CAN_Logic_ReadServoGroup(uint8_t start_idx, uint32_t ack_id)
 {
     uint16_t current1 = (uint16_t)servo_currents[start_idx];
     uint16_t current2 = (uint16_t)servo_currents[start_idx + 1];
@@ -30,52 +32,50 @@ static void CAN_Logic_ReadServoGroup(uint8_t start_idx, uint8_t opcode_ack)
     payload[4] = current3 >> 8;
     payload[5] = current3 & 0xFF;
 
-    CAN_Logic_SendAck(opcode_ack, payload, 6);
+    CAN_App_SendFrame(ack_id, payload, 6);
 }
 
 
-void CAN_Logic_ProcessFrame(uint8_t *data, uint8_t len)
-{
-    if (len == 0) return;
-
-    uint8_t opcode = data[0];
-
-    switch(opcode) {
-        case CAN_CMD_GET_SERVO_CURRENT_1_3_REQ:
+void CAN_Logic_HandleFrame(uint32_t id, uint8_t *data, uint8_t len) {
+    switch(id) {
+        case CAN_ID_GET_SERVO_CURRENT_1_3_REQ:
         	CAN_Logic_Handle_GetCurrents_Servos_1_3();
             break;
-        case CAN_CMD_GET_SERVO_CURRENT_4_6_REQ:
+        case CAN_ID_GET_SERVO_CURRENT_4_6_REQ:
 			CAN_Logic_Handle_GetCurrents_Servos_4_6();
 			break;
-        case CAN_CMD_GET_SERVO_CURRENT_7_9_REQ:
+        case CAN_ID_GET_SERVO_CURRENT_7_9_REQ:
 			CAN_Logic_Handle_GetCurrents_Servos_7_9();
 			break;
-        case CAN_CMD_GET_SERVO_CURRENT_10_12_REQ:
+        case CAN_ID_GET_SERVO_CURRENT_10_12_REQ:
 			CAN_Logic_Handle_GetCurrents_Servos_10_12();
 			break;
-        case CAN_CMD_GET_SERVO_CURRENT_13_15_REQ:
+        case CAN_ID_GET_SERVO_CURRENT_13_15_REQ:
 			CAN_Logic_Handle_GetCurrents_Servos_13_15();
 			break;
-        case CAN_CMD_GET_SERVO_CURRENT_16_18_REQ:
+        case CAN_ID_GET_SERVO_CURRENT_16_18_REQ:
 			CAN_Logic_Handle_GetCurrents_Servos_16_18();
 			break;
 
-        case CAN_CMD_GET_I_MANIP_I5V_POW_I3V3_POW_REQ:
+        case CAN_ID_GET_I_MANIP_I_5V_POW_I_3V3_POW_REQ:
         	CAN_Logic_Handle_GetCurrents_I_MANIP_I_5V_POW_I_3V3_POW();
 			break;
-        case CAN_CMD_GET_I_STANDBY_I_SUPPLY_REQ:
+        case CAN_ID_GET_I_STANDBY_I_SUPPLY_REQ:
         	CAN_Logic_Handle_GetCurrents_I_STANDBY_I_SUPPLY();
 			break;
 
-        case CAN_CMD_GET_U_CONVETERS_1_3_REQ:
+        case CAN_ID_GET_U_CONVETERS_1_3_REQ:
         	CAN_Logic_Handle_GetVoltages_Converters_1_3();
 			break;
-        case CAN_CMD_GET_U_CONVETERS_4_5_REQ:
+        case CAN_ID_GET_U_CONVETERS_4_5_REQ:
 			CAN_Logic_Handle_GetVoltages_Converters_4_5();
 			break;
-        case CAN_CMD_GET_U_SUPPLY_U_BAT_REQ:
+        case CAN_ID_GET_U_SUPPLY_U_BAT_REQ:
         	CAN_Logic_Handle_GetVoltages_U_SUPPLY_U_BAT();
 			break;
+
+        case CAN_ID_GET_TEMPERATURES_REQ:
+        	CAN_Logic_Handle_GetTemperatures();
 
         default:
             break;
@@ -83,38 +83,33 @@ void CAN_Logic_ProcessFrame(uint8_t *data, uint8_t len)
 }
 
 
-void CAN_Logic_SendAck(uint8_t opcode, uint8_t *payload, uint8_t len) {
-    CAN_App_SendResponse(opcode, payload, len);
-}
-
-
 void CAN_Logic_Handle_GetCurrents_Servos_1_3(void) {
-    CAN_Logic_ReadServoGroup(0, CAN_CMD_GET_SERVO_CURRENT_1_3_ACK);
+	CAN_Logic_ReadServoGroup(0, CAN_ID_GET_SERVO_CURRENT_1_3_ACK);
 }
 
 
 void CAN_Logic_Handle_GetCurrents_Servos_4_6(void) {
-    CAN_Logic_ReadServoGroup(3, CAN_CMD_GET_SERVO_CURRENT_4_6_ACK);
+    CAN_Logic_ReadServoGroup(3, CAN_ID_GET_SERVO_CURRENT_4_6_ACK);
 }
 
 
 void CAN_Logic_Handle_GetCurrents_Servos_7_9(void) {
-    CAN_Logic_ReadServoGroup(6, CAN_CMD_GET_SERVO_CURRENT_7_9_ACK);
+    CAN_Logic_ReadServoGroup(6, CAN_ID_GET_SERVO_CURRENT_7_9_ACK);
 }
 
 
 void CAN_Logic_Handle_GetCurrents_Servos_10_12(void) {
-    CAN_Logic_ReadServoGroup(9, CAN_CMD_GET_SERVO_CURRENT_10_12_ACK);
+    CAN_Logic_ReadServoGroup(9, CAN_ID_GET_SERVO_CURRENT_10_12_ACK);
 }
 
 
 void CAN_Logic_Handle_GetCurrents_Servos_13_15(void) {
-    CAN_Logic_ReadServoGroup(12, CAN_CMD_GET_SERVO_CURRENT_13_15_ACK);
+    CAN_Logic_ReadServoGroup(12, CAN_ID_GET_SERVO_CURRENT_13_15_ACK);
 }
 
 
 void CAN_Logic_Handle_GetCurrents_Servos_16_18(void) {
-    CAN_Logic_ReadServoGroup(15, CAN_CMD_GET_SERVO_CURRENT_16_18_ACK);
+    CAN_Logic_ReadServoGroup(15, CAN_ID_GET_SERVO_CURRENT_16_18_ACK);
 }
 
 
@@ -135,7 +130,7 @@ void CAN_Logic_Handle_GetCurrents_I_MANIP_I_5V_POW_I_3V3_POW(void) {
 	payload[4] = I_3V3_pow_current >> 8;
 	payload[5] = I_3V3_pow_current & 0xFF;
 
-	CAN_Logic_SendAck(CAN_CMD_GET_I_MANIP_I5V_POW_I3V3_POW_ACK, payload, 6);
+	CAN_App_SendFrame(CAN_ID_GET_I_MANIP_I_5V_POW_I_3V3_POW_ACK, payload, 6);
 }
 
 
@@ -152,7 +147,7 @@ void CAN_Logic_Handle_GetCurrents_I_STANDBY_I_SUPPLY(void) {
 	payload[2] = I_supply_current >> 8;
 	payload[3] = I_supply_current & 0xFF;
 
-	CAN_Logic_SendAck(CAN_CMD_GET_I_STANDBY_I_SUPPLY_ACK, payload, 4);
+	CAN_App_SendFrame(CAN_ID_GET_I_STANDBY_I_SUPPLY_ACK, payload, 4);
 }
 
 
@@ -173,7 +168,7 @@ void CAN_Logic_Handle_GetVoltages_Converters_1_3(void) {
 	payload[4] = converter3_voltage >> 8;
 	payload[5] = converter3_voltage & 0xFF;
 
-	CAN_Logic_SendAck(CAN_CMD_GET_U_CONVETERS_1_3_ACK, payload, 6);
+	CAN_App_SendFrame(CAN_ID_GET_U_CONVETERS_1_3_ACK, payload, 6);
 }
 
 
@@ -190,7 +185,7 @@ void CAN_Logic_Handle_GetVoltages_Converters_4_5(void) {
 	payload[2] = converter5_voltage >> 8;
 	payload[3] = converter5_voltage & 0xFF;
 
-	CAN_Logic_SendAck(CAN_CMD_GET_U_CONVETERS_4_5_ACK, payload, 4);
+	CAN_App_SendFrame(CAN_ID_GET_U_CONVETERS_4_5_ACK, payload, 4);
 }
 
 
@@ -207,7 +202,28 @@ void CAN_Logic_Handle_GetVoltages_U_SUPPLY_U_BAT(void) {
 	payload[2] = U_bat_voltage >> 8;
 	payload[3] = U_bat_voltage & 0xFF;
 
-	CAN_Logic_SendAck(CAN_CMD_GET_U_SUPPLY_U_BAT_ACK, payload, 4);
+	CAN_App_SendFrame(CAN_ID_GET_U_SUPPLY_U_BAT_ACK, payload, 4);
+}
+
+
+void CAN_Logic_Handle_GetTemperatures(void) {
+	int16_t temp1;
+	int16_t temp2;
+	int16_t temp3;
+
+	temp1 = (int16_t)temperatures[0];
+	temp2 = (int16_t)temperatures[1];
+	temp3 = (int16_t)temperatures[2];
+
+	uint8_t payload[6];
+	payload[0] = temp1 >> 8;
+	payload[1] = temp1 & 0xFF;
+	payload[2] = temp2 >> 8;
+	payload[3] = temp2 & 0xFF;
+	payload[4] = temp3 >> 8;
+	payload[5] = temp3 & 0xFF;
+
+	CAN_App_SendFrame(CAN_ID_GET_TEMPERATURES_ACK, payload, 6);
 }
 
 

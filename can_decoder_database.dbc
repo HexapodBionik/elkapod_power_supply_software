@@ -1,0 +1,96 @@
+VERSION "MyDevice CAN Protocol"
+
+NS_ :
+    NS_DESC_
+    CM_
+    BA_DEF_
+    BA_
+    VAL_
+    CAT_DEF_
+    CAT_
+    FILTER
+    BA_DEF_DEF_
+    EV_DATA_
+    ENVVAR_DATA_
+    SGTYPE_
+    SGTYPE_VAL_
+    BA_DEF_SGTYPE_
+    BA_SGTYPE_
+    SIG_TYPE_REF_
+    VAL_TABLE_
+    SIG_VALTYPE_
+    SIGTYPE_VALTYPE_
+    BO_TX_BU_
+    BA_DEF_REL_
+    BA_REL_
+    BA_DEF_DEF_REL_
+    BU_SG_REL_
+    BU_EV_REL_
+    BU_BO_REL_
+    SG_MUL_VAL_
+
+BS_:
+
+BU_: ECU
+
+BO_ 113 CAN_ID_GET_SERVO_CURRENT_1_3_ACK: 6 ELKAPOD_PSU
+    SG_ I_servo1      : 7|16@0+ (1,0) [0|65535] "mA" ELKAPOD_PSU
+    SG_ I_servo2      : 23|16@0+ (1,0) [0|65535] "mA" ELKAPOD_PSU
+    SG_ I_servo3      : 39|16@0+ (1,0) [0|65535] "mA" ELKAPOD_PSU
+
+BO_ 115 CAN_ID_GET_SERVO_CURRENT_4_6_ACK: 6 ELKAPOD_PSU
+    SG_ I_servo4      : 7|16@0+ (1,0) [0|65535] "mA" ELKAPOD_PSU
+    SG_ I_servo5      : 23|16@0+ (1,0) [0|65535] "mA" ELKAPOD_PSU
+    SG_ I_servo6      : 39|16@0+ (1,0) [0|65535] "mA" ELKAPOD_PSU
+
+BO_ 117 CAN_ID_GET_SERVO_CURRENT_7_9_ACK: 6 ELKAPOD_PSU
+    SG_ I_servo7      : 7|16@0+ (1,0) [0|65535] "mA" ELKAPOD_PSU
+    SG_ I_servo8      : 23|16@0+ (1,0) [0|65535] "mA" ELKAPOD_PSU
+    SG_ I_servo9      : 39|16@0+ (1,0) [0|65535] "mA" ELKAPOD_PSU
+
+BO_ 119 CAN_ID_GET_SERVO_CURRENT_10_12_ACK: 6 ELKAPOD_PSU
+    SG_ I_servo10     : 7|16@0+ (1,0) [0|65535] "mA" ELKAPOD_PSU
+    SG_ I_servo11     : 23|16@0+ (1,0) [0|65535] "mA" ELKAPOD_PSU
+    SG_ I_servo12     : 39|16@0+ (1,0) [0|65535] "mA" ELKAPOD_PSU
+
+BO_ 121 CAN_ID_GET_SERVO_CURRENT_13_15_ACK: 6 ELKAPOD_PSU
+    SG_ I_servo13     : 7|16@0+ (1,0) [0|65535] "mA" ELKAPOD_PSU
+    SG_ I_servo14     : 23|16@0+ (1,0) [0|65535] "mA" ELKAPOD_PSU
+    SG_ I_servo15     : 39|16@0+ (1,0) [0|65535] "mA" ELKAPOD_PSU
+
+BO_ 123 CAN_ID_GET_SERVO_CURRENT_16_18_ACK: 6 ELKAPOD_PSU
+    SG_ I_servo16     : 7|16@0+ (1,0) [0|65535] "mA" ELKAPOD_PSU
+    SG_ I_servo17     : 23|16@0+ (1,0) [0|65535] "mA" ELKAPOD_PSU
+    SG_ I_servo18     : 39|16@0+ (1,0) [0|65535] "mA" ELKAPOD_PSU
+
+
+
+BO_ 125 CAN_ID_GET_I_MANIP_I5V_POW_I3V3_POW_ACK: 6 ELKAPOD_PSU
+    SG_ I_manip       : 7|16@0+ (1,0) [0|65535] "mA" ELKAPOD_PSU
+    SG_ I_5V_pow      : 23|16@0+ (1,0) [0|65535] "mA" ELKAPOD_PSU
+    SG_ I_3V3_pow     : 39|16@0+ (1,0) [0|65535] "mA" ELKAPOD_PSU
+
+BO_ 127 CAN_ID_GET_I_STANDBY_I_SUPPLY_ACK: 4 ELKAPOD_PSU
+    SG_ I_standby     : 7|16@0+ (1,0) [0|65535] "mA" ELKAPOD_PSU
+    SG_ I_supply      : 23|16@0+ (1,0) [0|65535] "mA" ELKAPOD_PSU
+
+
+
+BO_ 129 CAN_ID_GET_U_CONVETERS_1_3_ACK: 6 ELKAPOD_PSU
+    SG_ U_converter1  : 7|16@0+ (1,0) [0|65535] "mV" ELKAPOD_PSU
+    SG_ U_converter2  : 23|16@0+ (1,0) [0|65535] "mV" ELKAPOD_PSU
+    SG_ U_converter3  : 39|16@0+ (1,0) [0|65535] "mV" ELKAPOD_PSU
+
+BO_ 131 CAN_ID_GET_U_CONVETERS_4_5_ACK: 4 ELKAPOD_PSU
+    SG_ U_converter4  : 7|16@0+ (1,0) [0|65535] "mV" ELKAPOD_PSU
+    SG_ U_converter5  : 23|16@0+ (1,0) [0|65535] "mV" ELKAPOD_PSU
+
+BO_ 133 CAN_ID_GET_U_SUPPLY_U_BAT_ACK: 4 ELKAPOD_PSU
+    SG_ U_supply      : 7|16@0+ (1,0) [0|65535] "mV" ELKAPOD_PSU
+    SG_ U_batt        : 23|16@0+ (1,0) [0|65535] "mV" ELKAPOD_PSU
+
+
+BO_ 135 CAN_ID_GET_TEMPERATURES_ACK: 6 ELKAPOD_PSU
+    SG_ Temp1  : 7|16@0- (1,0) [-32768|32767] "C" ELKAPOD_PSU
+    SG_ Temp2  : 23|16@0- (1,0) [-32768|32767] "C" ELKAPOD_PSU
+    SG_ Temp3  : 39|16@0- (1,0) [-32768|32767] "C" ELKAPOD_PSU

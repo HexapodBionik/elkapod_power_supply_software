@@ -6,7 +6,7 @@
 #include "can_logic.h"
 
 
-HAL_StatusTypeDef CAN_App_Init(void);
-HAL_StatusTypeDef CAN_App_SendResponse(uint8_t opcode, uint8_t *payload, uint8_t len);
+HAL_StatusTypeDef CAN_App_Init(uint16_t can_id_min, uint16_t can_id_max);
+HAL_StatusTypeDef CAN_App_SendFrame(uint32_t id, uint8_t *data, uint8_t len);
 
 #endif
