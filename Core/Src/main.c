@@ -34,6 +34,7 @@
 #include "i2c_manager.h"
 #include "can_app.h"
 #include "can_logic.h"
+#include "pots_controller.h"
 
 
 /* USER CODE END Includes */
@@ -89,6 +90,13 @@ MCP4552_HandleTypeDef pot2;
 MCP4552_HandleTypeDef pot3;
 MCP4552_HandleTypeDef pot4;
 
+PotChannel pots[4] = {
+    {&pot1, 128, 128, 2},
+    {&pot2, 128, 128, 2},
+    {&pot3, 128, 128, 2},
+    {&pot4, 128, 128, 2}
+};
+
 // buffers and variables for SPI ADCs
 uint16_t spi_adc_samples[SPI_ADC_COUNT][SPI_ADC_AVG_SAMPLES] = {0};
 uint8_t spi_adc_sample_index[SPI_ADC_COUNT] = {0};
@@ -129,6 +137,27 @@ float I_3V3_pow = 0.0f;
 float I_standby = 0.0f;
 
 float temperatures[3] = {0.0f};
+
+// variables for changing converters voltage
+uint16_t pot1_value = 128;
+uint16_t pot2_value = 128;
+uint16_t pot3_value = 128;
+uint16_t pot4_value = 128;
+
+uint16_t set_pot1_value = 128;
+uint16_t set_pot2_value = 128;
+uint16_t set_pot3_value = 128;
+uint16_t set_pot4_value = 128;
+
+uint8_t set_pot1_done = 2; // 0 - processing, 1 - done, 2 - sent ACK
+uint8_t set_pot2_done = 2;
+uint8_t set_pot3_done = 2;
+uint8_t set_pot4_done = 2;
+
+//uint16_t max_conv1_3_voltage_mV = 0;
+//uint16_t min_conv1_3_voltage_mV = 0;
+//uint16_t max_conv4_voltage_mV = 0;
+//uint16_t max_conv4_voltage_mV = 0;
 
 // flags etc
 uint8_t conv1_oc_status = 0;
@@ -182,6 +211,38 @@ void EnterStop1(void) {
 }
 
 
+uint16_t converter_voltage_to_pot_value(float voltage, float R_FB1,
+		float R_FB2, float R_FB3,
+		float R_pot, float R_pot_offset) {
+	float Re = R_FB2/((voltage/1.215f) - 1);
+	float Rp = (R_FB1*R_FB3 - Re*(R_FB1 + R_FB3))/(Re - R_FB1) - R_pot_offset;
+	float pot_value = Rp*256.0/R_pot;
+
+	if(pot_value <= 0.0f) {
+		pot_value = 0.0f;
+	} else if (pot_value >= 256.0f) {
+		pot_value = 256.0f;
+	}
+	return (uint16_t)pot_value;
+}
+
+
+void setup_pots(void) {
+	pots[0].target_value = converter_voltage_to_pot_value(CONVERTER1_SETUP_VOLTAGE,
+			CONV1_3_RFB1, CONV1_3_RFB2, CONV1_3_RFB3, POT_RESISTANCE, POT_RESISTANCE_OFFSET);
+	pots[0].done = 0;
+	pots[1].target_value = converter_voltage_to_pot_value(CONVERTER2_SETUP_VOLTAGE,
+			CONV1_3_RFB1, CONV1_3_RFB2, CONV1_3_RFB3, POT_RESISTANCE, POT_RESISTANCE_OFFSET);
+	pots[1].done = 0;
+	pots[2].target_value = converter_voltage_to_pot_value(CONVERTER3_SETUP_VOLTAGE,
+			CONV1_3_RFB1, CONV1_3_RFB2, CONV1_3_RFB3, POT_RESISTANCE, POT_RESISTANCE_OFFSET);
+	pots[2].done = 0;
+	pots[3].target_value = converter_voltage_to_pot_value(CONVERTER4_SETUP_VOLTAGE,
+			CONV4_RFB1, CONV4_RFB2, CONV4_RFB3, POT_RESISTANCE, POT_RESISTANCE_OFFSET);
+	pots[3].done = 0;
+}
+
+
 /* USER CODE END 0 */
 
 /**
@@ -193,7 +254,7 @@ int main(void)
 
   /* USER CODE BEGIN 1 */
 
-  uint8_t pot_value = 1;
+//  uint8_t pot_value = 1;
   uint8_t converters_en = 1;
 
 
@@ -295,6 +356,8 @@ int main(void)
 	  Error_Handler();
   }
 
+  setup_pots();
+
 //  HAL_TIM_Base_Start(&htim6);
 //  if (HAL_ADC_Start_DMA(&hadc1, (uint32_t*)adc1_buf, ADC1_CHANNELS) != HAL_OK) {
 //	Error_Handler();
@@ -377,28 +440,6 @@ int main(void)
 	}
 
 
-//	if(main_iteration == 1000) {
-//		MCP4552_write_volatile(&pot4, 256);
-//	}
-//	if(main_iteration == 2000) {
-//		MCP4552_write_volatile(&pot4, 255);
-//	}
-//	if(main_iteration == 3000) {
-//		MCP4552_write_volatile(&pot4, 4);
-//	}
-//	if(main_iteration == 4000) {
-//		MCP4552_write_volatile(&pot4, 128);
-//	}
-//	if(main_iteration == 5000) {
-//		MCP4552_write_volatile(&pot4, 0);
-//		main_iteration = 0;
-//	}
-
-//	mcp_read_value = MCP4552_read_volatile(&pot4);
-//	MCP4552_read_volatile(&pot1);
-//	MCP4552_read_volatile(&pot2);
-//	MCP4552_read_volatile(&pot3);
-
 
 
 	if(HAL_GPIO_ReadPin(SW_FUNC_GPIO_Port, SW_FUNC_Pin) == GPIO_PIN_RESET) {
@@ -437,45 +478,6 @@ int main(void)
 		}
 	}
 
-
-//	if(HAL_GPIO_ReadPin(SW_BAT_INDICATOR_GPIO_Port, SW_BAT_INDICATOR_Pin) == GPIO_PIN_RESET) {
-//		if(HVC_bool == 0) {
-//			PCF7485_write_pin(&expander1, EXPANDER1_POT_HVC, GPIO_PIN_RESET);
-//			HAL_GPIO_WritePin(LED_FATAL_ERROR_GPIO_Port, LED_FATAL_ERROR_Pin, GPIO_PIN_SET);
-//			HVC_bool = 1;
-//		} else {
-//			PCF7485_write_pin(&expander1, EXPANDER1_POT_HVC, GPIO_PIN_SET);
-//			HAL_GPIO_WritePin(LED_FATAL_ERROR_GPIO_Port, LED_FATAL_ERROR_Pin, GPIO_PIN_RESET);
-//			HVC_bool = 0;
-//		}
-//		HAL_Delay(1000);
-//	}
-
-
-	if(HAL_GPIO_ReadPin(SW_BAT_INDICATOR_GPIO_Port, SW_BAT_INDICATOR_Pin) == GPIO_PIN_RESET) {
-		if(pot_value == 1) {
-			for (uint16_t i = 0; i <= 255; i++) {
-				MCP4552_increment_volatile(&pot1);
-				MCP4552_increment_volatile(&pot2);
-				MCP4552_increment_volatile(&pot3);
-				MCP4552_increment_volatile(&pot4);
-				HAL_Delay(1);
-			}
-			HAL_Delay(1000);
-			pot_value = 0;
-		} else {
-			for (uint16_t i = 255; i > 0; i--) {
-				MCP4552_decrement_volatile(&pot1);
-				MCP4552_decrement_volatile(&pot2);
-				MCP4552_decrement_volatile(&pot3);
-				MCP4552_decrement_volatile(&pot4);
-				HAL_Delay(1);
-			}
-			pot_value = 1;
-			HAL_Delay(1000);
-		}
-	}
-
 	if(HAL_GPIO_ReadPin(SW_CLR_ERR_GPIO_Port, SW_CLR_ERR_Pin) == GPIO_PIN_RESET) {
 		conv1_oc_status = 0;
 		conv2_oc_status = 0;
@@ -486,55 +488,16 @@ int main(void)
 
 
 
-	HAL_ADC_Start_DMA(&hadc1, (uint32_t*)adc1_buf, ADC1_CHANNELS);
-
-
-//	HAL_Delay(100);
-
-//	for (uint32_t freq = 1000; freq <= 4000; freq += 500) {
-//		uint32_t period = (HAL_RCC_GetPCLK1Freq() / 80) / freq;
-//		__HAL_TIM_SET_AUTORELOAD(&htim3, period);
-//		__HAL_TIM_SET_COMPARE(&htim3, TIM_CHANNEL_1, period / 2);
-//		HAL_Delay(300);
-//	}
-
-//	adc1_value = ADC121S021_read(&adc1);
-//	HAL_Delay(10);
-//	adc2_value = ADC121S021_read(&adc2);
-//	HAL_Delay(10);
-//	adc3_value = ADC121S021_read(&adc3);
-//	HAL_Delay(10);
-//	adc4_value = ADC121S021_read(&adc4);
-//	HAL_Delay(10);
-//	adc5_value = ADC121S021_read(&adc5);
-//	HAL_Delay(10);
-//	adc_I_supply_value = ADC121S021_read(&adc_I_supply);
-//	HAL_Delay(10);
-//	adc_U_supply_value = ADC121S021_read(&adc_U_supply);
-//	HAL_Delay(10);
-//	adc_U_bat_value = ADC121S021_read(&adc_U_bat);
+//	HAL_ADC_Start_DMA(&hadc1, (uint32_t*)adc1_buf, ADC1_CHANNELS);
 
 
 
-	main_iteration++;
 
-//	MCP4552_increment_volatile(&pot1);
-//	MCP4552_increment_volatile(&pot2);
-//	MCP4552_increment_volatile(&pot3);
-//	MCP4552_increment_volatile(&pot4);
-//
-//	MCP4552_decrement_volatile(&pot1);
-//	MCP4552_decrement_volatile(&pot2);
-//	MCP4552_decrement_volatile(&pot3);
-//	MCP4552_decrement_volatile(&pot4);
-
-
-//	read_value = PCF7485_read_pin_blocking(&expander1, 1);
-//	PCF7485_read_pin_blocking(&expander1, 2);
-//	PCF7485_read_pin_blocking(&expander1, 3);
-//	PCF7485_read_pin_blocking(&expander1, 4);
+	Pots_Tick(); // setting voltages in converters
+	CAN_Logic_Tick();
 
 	HAL_Delay(1);
+	main_iteration++;
 
 
 

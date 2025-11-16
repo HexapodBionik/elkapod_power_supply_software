@@ -16,10 +16,33 @@ extern float U_supply;
 extern float U_bat_ADC;
 
 extern float temperatures[3];
+extern PotChannel pots[4];
+
+const uint16_t CONV1_3_MAX_VOLTAGE =
+    CALC_CONVERTER_VOLTAGE(CONV1_3_RFB1, CONV1_3_RFB2, CONV1_3_RFB3, POT_RESISTANCE_OFFSET);
+
+const uint16_t CONV1_3_MIN_VOLTAGE =
+	CALC_CONVERTER_VOLTAGE(CONV1_3_RFB1, CONV1_3_RFB2, CONV1_3_RFB3, POT_RESISTANCE + POT_RESISTANCE_OFFSET);
+
+const uint16_t CONV4_MAX_VOLTAGE =
+	CALC_CONVERTER_VOLTAGE(CONV4_RFB1, CONV4_RFB2, CONV4_RFB3, POT_RESISTANCE_OFFSET);
+
+const uint16_t CONV4_MIN_VOLTAGE =
+	CALC_CONVERTER_VOLTAGE(CONV4_RFB1, CONV4_RFB2, CONV4_RFB3, POT_RESISTANCE + POT_RESISTANCE_OFFSET);
 
 
-static void CAN_Logic_ReadServoGroup(uint8_t start_idx, uint32_t ack_id)
-{
+extern uint16_t converter_voltage_to_pot_value(float voltage, float R_FB1,
+		float R_FB2, float R_FB3,
+		float R_pot, float R_pot_offset);
+
+
+static inline double calculate_converter_voltage_from_resistances_mV(
+		float R_F1, float R_F2, float R_F3, float R_p) {
+    return (R_F2 / ((R_F1 * (R_p + R_F3)) / (R_F1 + R_p + R_F3)) + 1.0f) * 1.215f * 1000.0f;
+}
+
+
+static void CAN_Logic_ReadServoGroup(uint8_t start_idx, uint32_t ack_id) {
     uint16_t current1 = (uint16_t)servo_currents[start_idx];
     uint16_t current2 = (uint16_t)servo_currents[start_idx + 1];
     uint16_t current3 = (uint16_t)servo_currents[start_idx + 2];
@@ -39,43 +62,60 @@ static void CAN_Logic_ReadServoGroup(uint8_t start_idx, uint32_t ack_id)
 void CAN_Logic_HandleFrame(uint32_t id, uint8_t *data, uint8_t len) {
     switch(id) {
         case CAN_ID_GET_SERVO_CURRENT_1_3_REQ:
-        	CAN_Logic_Handle_GetCurrents_Servos_1_3();
+        	CAN_Logic_Handle_GetCurrents_Servos_1_3(len);
             break;
         case CAN_ID_GET_SERVO_CURRENT_4_6_REQ:
-			CAN_Logic_Handle_GetCurrents_Servos_4_6();
+			CAN_Logic_Handle_GetCurrents_Servos_4_6(len);
 			break;
         case CAN_ID_GET_SERVO_CURRENT_7_9_REQ:
-			CAN_Logic_Handle_GetCurrents_Servos_7_9();
+			CAN_Logic_Handle_GetCurrents_Servos_7_9(len);
 			break;
         case CAN_ID_GET_SERVO_CURRENT_10_12_REQ:
-			CAN_Logic_Handle_GetCurrents_Servos_10_12();
+			CAN_Logic_Handle_GetCurrents_Servos_10_12(len);
 			break;
         case CAN_ID_GET_SERVO_CURRENT_13_15_REQ:
-			CAN_Logic_Handle_GetCurrents_Servos_13_15();
+			CAN_Logic_Handle_GetCurrents_Servos_13_15(len);
 			break;
         case CAN_ID_GET_SERVO_CURRENT_16_18_REQ:
-			CAN_Logic_Handle_GetCurrents_Servos_16_18();
+			CAN_Logic_Handle_GetCurrents_Servos_16_18(len);
 			break;
+
 
         case CAN_ID_GET_I_MANIP_I_5V_POW_I_3V3_POW_REQ:
-        	CAN_Logic_Handle_GetCurrents_I_MANIP_I_5V_POW_I_3V3_POW();
+        	CAN_Logic_Handle_GetCurrents_I_MANIP_I_5V_POW_I_3V3_POW(len);
 			break;
         case CAN_ID_GET_I_STANDBY_I_SUPPLY_REQ:
-        	CAN_Logic_Handle_GetCurrents_I_STANDBY_I_SUPPLY();
+        	CAN_Logic_Handle_GetCurrents_I_STANDBY_I_SUPPLY(len);
 			break;
+
 
         case CAN_ID_GET_U_CONVETERS_1_3_REQ:
-        	CAN_Logic_Handle_GetVoltages_Converters_1_3();
+        	CAN_Logic_Handle_GetVoltages_Converters_1_3(len);
 			break;
         case CAN_ID_GET_U_CONVETERS_4_5_REQ:
-			CAN_Logic_Handle_GetVoltages_Converters_4_5();
+			CAN_Logic_Handle_GetVoltages_Converters_4_5(len);
 			break;
         case CAN_ID_GET_U_SUPPLY_U_BAT_REQ:
-        	CAN_Logic_Handle_GetVoltages_U_SUPPLY_U_BAT();
+        	CAN_Logic_Handle_GetVoltages_U_SUPPLY_U_BAT(len);
 			break;
 
+
         case CAN_ID_GET_TEMPERATURES_REQ:
-        	CAN_Logic_Handle_GetTemperatures();
+        	CAN_Logic_Handle_GetTemperatures(len);
+
+
+        case CAN_ID_SET_CONVERTER1_VOLTAGE_REQ:
+        	CAN_Logic_Handle_SetVoltage_Converters1_3(data, len, 0);
+			break;
+        case CAN_ID_SET_CONVERTER2_VOLTAGE_REQ:
+        	CAN_Logic_Handle_SetVoltage_Converters1_3(data, len, 1);
+			break;
+        case CAN_ID_SET_CONVERTER3_VOLTAGE_REQ:
+        	CAN_Logic_Handle_SetVoltage_Converters1_3(data, len, 2);
+			break;
+        case CAN_ID_SET_CONVERTER4_VOLTAGE_REQ:
+			CAN_Logic_Handle_SetVoltage_Converter4(data, len, 3);
+			break;
 
         default:
             break;
@@ -83,37 +123,44 @@ void CAN_Logic_HandleFrame(uint32_t id, uint8_t *data, uint8_t len) {
 }
 
 
-void CAN_Logic_Handle_GetCurrents_Servos_1_3(void) {
+void CAN_Logic_Handle_GetCurrents_Servos_1_3(uint8_t len) {
+	if(len != 0) return;
 	CAN_Logic_ReadServoGroup(0, CAN_ID_GET_SERVO_CURRENT_1_3_ACK);
 }
 
 
-void CAN_Logic_Handle_GetCurrents_Servos_4_6(void) {
+void CAN_Logic_Handle_GetCurrents_Servos_4_6(uint8_t len) {
+	if(len != 0) return;
     CAN_Logic_ReadServoGroup(3, CAN_ID_GET_SERVO_CURRENT_4_6_ACK);
 }
 
 
-void CAN_Logic_Handle_GetCurrents_Servos_7_9(void) {
+void CAN_Logic_Handle_GetCurrents_Servos_7_9(uint8_t len) {
+	if(len != 0) return;
     CAN_Logic_ReadServoGroup(6, CAN_ID_GET_SERVO_CURRENT_7_9_ACK);
 }
 
 
-void CAN_Logic_Handle_GetCurrents_Servos_10_12(void) {
+void CAN_Logic_Handle_GetCurrents_Servos_10_12(uint8_t len) {
+	if(len != 0) return;
     CAN_Logic_ReadServoGroup(9, CAN_ID_GET_SERVO_CURRENT_10_12_ACK);
 }
 
 
-void CAN_Logic_Handle_GetCurrents_Servos_13_15(void) {
+void CAN_Logic_Handle_GetCurrents_Servos_13_15(uint8_t len) {
+	if(len != 0) return;
     CAN_Logic_ReadServoGroup(12, CAN_ID_GET_SERVO_CURRENT_13_15_ACK);
 }
 
 
-void CAN_Logic_Handle_GetCurrents_Servos_16_18(void) {
+void CAN_Logic_Handle_GetCurrents_Servos_16_18(uint8_t len) {
+	if(len != 0) return;
     CAN_Logic_ReadServoGroup(15, CAN_ID_GET_SERVO_CURRENT_16_18_ACK);
 }
 
 
-void CAN_Logic_Handle_GetCurrents_I_MANIP_I_5V_POW_I_3V3_POW(void) {
+void CAN_Logic_Handle_GetCurrents_I_MANIP_I_5V_POW_I_3V3_POW(uint8_t len) {
+	if(len != 0) return;
 	uint16_t I_manip_current;
 	uint16_t I_5V_pow_current;
 	uint16_t I_3V3_pow_current;
@@ -134,7 +181,8 @@ void CAN_Logic_Handle_GetCurrents_I_MANIP_I_5V_POW_I_3V3_POW(void) {
 }
 
 
-void CAN_Logic_Handle_GetCurrents_I_STANDBY_I_SUPPLY(void) {
+void CAN_Logic_Handle_GetCurrents_I_STANDBY_I_SUPPLY(uint8_t len) {
+	if(len != 0) return;
 	uint16_t I_standby_current;
 	uint16_t I_supply_current;
 
@@ -151,7 +199,8 @@ void CAN_Logic_Handle_GetCurrents_I_STANDBY_I_SUPPLY(void) {
 }
 
 
-void CAN_Logic_Handle_GetVoltages_Converters_1_3(void) {
+void CAN_Logic_Handle_GetVoltages_Converters_1_3(uint8_t len) {
+	if(len != 0) return;
 	uint16_t converter1_voltage;
 	uint16_t converter2_voltage;
 	uint16_t converter3_voltage;
@@ -172,7 +221,8 @@ void CAN_Logic_Handle_GetVoltages_Converters_1_3(void) {
 }
 
 
-void CAN_Logic_Handle_GetVoltages_Converters_4_5(void) {
+void CAN_Logic_Handle_GetVoltages_Converters_4_5(uint8_t len) {
+	if(len != 0) return;
 	uint16_t converter4_voltage;
 	uint16_t converter5_voltage;
 
@@ -189,7 +239,8 @@ void CAN_Logic_Handle_GetVoltages_Converters_4_5(void) {
 }
 
 
-void CAN_Logic_Handle_GetVoltages_U_SUPPLY_U_BAT(void) {
+void CAN_Logic_Handle_GetVoltages_U_SUPPLY_U_BAT(uint8_t len) {
+	if(len != 0) return;
 	uint16_t U_supply_voltage;
 	uint16_t U_bat_voltage;
 
@@ -206,7 +257,8 @@ void CAN_Logic_Handle_GetVoltages_U_SUPPLY_U_BAT(void) {
 }
 
 
-void CAN_Logic_Handle_GetTemperatures(void) {
+void CAN_Logic_Handle_GetTemperatures(uint8_t len) {
+	if(len != 0) return;
 	int16_t temp1;
 	int16_t temp2;
 	int16_t temp3;
@@ -226,4 +278,69 @@ void CAN_Logic_Handle_GetTemperatures(void) {
 	CAN_App_SendFrame(CAN_ID_GET_TEMPERATURES_ACK, payload, 6);
 }
 
+
+void CAN_Logic_Handle_SetVoltage_Converters1_3(uint8_t* data, uint8_t len, uint8_t pot_index) {
+	if(len != 2) return;
+	uint16_t voltage_mV = (data[0] << 8) | data[1];
+	if(voltage_mV > CONV1_3_MAX_VOLTAGE || voltage_mV < CONV1_3_MIN_VOLTAGE) {
+		return;
+	}
+	pots[pot_index].target_value = converter_voltage_to_pot_value((float)voltage_mV/1000.0,
+			CONV1_3_RFB1, CONV1_3_RFB2, CONV1_3_RFB3, POT_RESISTANCE, POT_RESISTANCE_OFFSET);
+	pots[pot_index].done = 0;
+}
+
+
+void CAN_Logic_Handle_SetVoltage_Converter4(uint8_t* data, uint8_t len, uint8_t pot_index) {
+	if(len != 2) return;
+	uint16_t voltage_mV = (data[0] << 8) | data[1];
+	if(voltage_mV > CONV4_MAX_VOLTAGE || voltage_mV < CONV4_MIN_VOLTAGE) {
+		return;
+	}
+	pots[pot_index].target_value = converter_voltage_to_pot_value((float)voltage_mV/1000.0,
+			CONV4_RFB1, CONV4_RFB2, CONV4_RFB3, POT_RESISTANCE, POT_RESISTANCE_OFFSET);
+	pots[pot_index].done = 0;
+}
+
+
+void CAN_Logic_Tick(void) {
+	// sending ACK for SET_CONVERTER commends
+	for(uint8_t i = 0; i < 3; i++) {
+		if(pots[i].done == 1) {
+			uint8_t payload[2];
+			float Rp = ((float)pots[i].current_value/256.0) * POT_RESISTANCE + POT_RESISTANCE_OFFSET;
+			uint16_t voltage_mV = (uint16_t)calculate_converter_voltage_from_resistances_mV(
+					CONV1_3_RFB1, CONV1_3_RFB2, CONV1_3_RFB3, Rp);
+
+			payload[0] = voltage_mV >> 8;
+			payload[1] = voltage_mV & 0xFF;
+
+			switch(i) {
+				case 0:
+					CAN_App_SendFrame(CAN_ID_SET_CONVERTER1_VOLTAGE_ACK, payload, 2);
+					break;
+				case 1:
+					CAN_App_SendFrame(CAN_ID_SET_CONVERTER2_VOLTAGE_ACK, payload, 2);
+					break;
+				case 2:
+					CAN_App_SendFrame(CAN_ID_SET_CONVERTER3_VOLTAGE_ACK, payload, 2);
+					break;
+			}
+			pots[i].done = 2;
+		}
+	}
+
+	if(pots[3].done == 1) {
+		uint8_t payload[2];
+		float Rp = ((float)pots[3].current_value/256.0) * POT_RESISTANCE + POT_RESISTANCE_OFFSET;
+		uint16_t voltage_mV = (uint16_t)calculate_converter_voltage_from_resistances_mV(
+				CONV4_RFB1, CONV4_RFB2, CONV4_RFB3, Rp);
+
+		payload[0] = voltage_mV >> 8;
+		payload[1] = voltage_mV & 0xFF;
+
+		CAN_App_SendFrame(CAN_ID_SET_CONVERTER4_VOLTAGE_ACK, payload, 2);
+		pots[3].done = 2;
+	}
+}
 
