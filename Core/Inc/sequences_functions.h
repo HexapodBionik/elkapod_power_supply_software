@@ -10,6 +10,7 @@
 #include "can_app.h"
 #include "pots_controller.h"
 #include "servos_controller.h"
+#include "voltage_outputs_controller.h"
 
 #include "tim.h"
 

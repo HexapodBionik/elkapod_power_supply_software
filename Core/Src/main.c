@@ -37,6 +37,7 @@
 #include "can_logic.h"
 #include "pots_controller.h"
 #include "servos_controller.h"
+#include "voltage_outputs_controller.h"
 #include "sequences_functions.h"
 
 
@@ -87,6 +88,12 @@ ServoControllerState servos = {
     .done = 2
 };
 
+VoltageOutputsController vouts = {
+    .current_mask = 0,
+    .target_mask = 0,
+    .done = 2
+};
+
 // buffers and variables for SPI ADCs
 uint16_t spi_adc_samples[SPI_ADC_COUNT][SPI_ADC_AVG_SAMPLES] = {0};
 uint8_t spi_adc_sample_index[SPI_ADC_COUNT] = {0};
@@ -128,28 +135,15 @@ float I_standby = 0.0f;
 
 float temperatures[3] = {0.0f};
 
-// variables for changing converters voltage
-uint16_t pot1_value = 128;
-uint16_t pot2_value = 128;
-uint16_t pot3_value = 128;
-uint16_t pot4_value = 128;
-
-uint16_t set_pot1_value = 128;
-uint16_t set_pot2_value = 128;
-uint16_t set_pot3_value = 128;
-uint16_t set_pot4_value = 128;
-
-uint8_t set_pot1_done = 2; // 0 - processing, 1 - done, 2 - sent ACK
-uint8_t set_pot2_done = 2;
-uint8_t set_pot3_done = 2;
-uint8_t set_pot4_done = 2;
-
 // flags etc
 uint8_t conv1_oc_status = 0;
 uint8_t conv2_oc_status = 0;
 uint8_t conv3_oc_status = 0;
 uint8_t conv4_oc_status = 0;
 uint8_t conv5_oc_status = 0;
+
+uint8_t manip_conv_en = 0;
+uint8_t manip_conv_en_done = 2;
 
 uint32_t last_tick_toggle_en_conv = 0;
 
@@ -398,14 +392,20 @@ int main(void)
 		}
 
 
-
-		//	HAL_ADC_Start_DMA(&hadc1, (uint32_t*)adc1_buf, ADC1_CHANNELS);
-
-
+		// set manipulator converter state
+		if(manip_conv_en_done == 0) {
+			if(manip_conv_en == 1) {
+				PCF7485_write_pin_blocking(&expander1, EXPANDER1_CONV4_EN, GPIO_PIN_RESET);
+			} else {
+				PCF7485_write_pin_blocking(&expander1, EXPANDER1_CONV4_EN, GPIO_PIN_SET);
+			}
+			manip_conv_en_done = 1;
+		}
 
 
 		Pots_Tick(); // setting voltages in converters
 		Servos_Tick();
+		VoltageOutputs_Tick();
 		CAN_Logic_Tick();
 
 		HAL_Delay(1);

@@ -19,19 +19,22 @@ extern float temperatures[3];
 
 extern PotChannel pots[4];
 extern ServoControllerState servos;
+extern VoltageOutputsController vouts;
+extern uint8_t manip_conv_en;
+extern uint8_t manip_conv_en_done;
 
 
 const uint16_t CONV1_3_MAX_VOLTAGE =
-    CALC_CONVERTER_VOLTAGE(CONV1_3_RFB1, CONV1_3_RFB2, CONV1_3_RFB3, POT_RESISTANCE_OFFSET);
+		CALC_CONVERTER_VOLTAGE(CONV1_3_RFB1, CONV1_3_RFB2, CONV1_3_RFB3, POT_RESISTANCE_OFFSET);
 
 const uint16_t CONV1_3_MIN_VOLTAGE =
-	CALC_CONVERTER_VOLTAGE(CONV1_3_RFB1, CONV1_3_RFB2, CONV1_3_RFB3, POT_RESISTANCE + POT_RESISTANCE_OFFSET);
+		CALC_CONVERTER_VOLTAGE(CONV1_3_RFB1, CONV1_3_RFB2, CONV1_3_RFB3, POT_RESISTANCE + POT_RESISTANCE_OFFSET);
 
 const uint16_t CONV4_MAX_VOLTAGE =
-	CALC_CONVERTER_VOLTAGE(CONV4_RFB1, CONV4_RFB2, CONV4_RFB3, POT_RESISTANCE_OFFSET);
+		CALC_CONVERTER_VOLTAGE(CONV4_RFB1, CONV4_RFB2, CONV4_RFB3, POT_RESISTANCE_OFFSET);
 
 const uint16_t CONV4_MIN_VOLTAGE =
-	CALC_CONVERTER_VOLTAGE(CONV4_RFB1, CONV4_RFB2, CONV4_RFB3, POT_RESISTANCE + POT_RESISTANCE_OFFSET);
+		CALC_CONVERTER_VOLTAGE(CONV4_RFB1, CONV4_RFB2, CONV4_RFB3, POT_RESISTANCE + POT_RESISTANCE_OFFSET);
 
 
 extern uint16_t converter_voltage_to_pot_value(float voltage, float R_FB1,
@@ -41,92 +44,98 @@ extern uint16_t converter_voltage_to_pot_value(float voltage, float R_FB1,
 
 static inline double calculate_converter_voltage_from_resistances_mV(
 		float R_F1, float R_F2, float R_F3, float R_p) {
-    return (R_F2 / ((R_F1 * (R_p + R_F3)) / (R_F1 + R_p + R_F3)) + 1.0f) * 1.215f * 1000.0f;
+	return (R_F2 / ((R_F1 * (R_p + R_F3)) / (R_F1 + R_p + R_F3)) + 1.0f) * 1.215f * 1000.0f;
 }
 
 
 static void CAN_Logic_ReadServoGroup(uint8_t start_idx, uint32_t ack_id) {
-    uint16_t current1 = (uint16_t)servo_currents[start_idx];
-    uint16_t current2 = (uint16_t)servo_currents[start_idx + 1];
-    uint16_t current3 = (uint16_t)servo_currents[start_idx + 2];
+	uint16_t current1 = (uint16_t)servo_currents[start_idx];
+	uint16_t current2 = (uint16_t)servo_currents[start_idx + 1];
+	uint16_t current3 = (uint16_t)servo_currents[start_idx + 2];
 
-    uint8_t payload[6];
-    payload[0] = current1 >> 8;
-    payload[1] = current1 & 0xFF;
-    payload[2] = current2 >> 8;
-    payload[3] = current2 & 0xFF;
-    payload[4] = current3 >> 8;
-    payload[5] = current3 & 0xFF;
+	uint8_t payload[6];
+	payload[0] = current1 >> 8;
+	payload[1] = current1 & 0xFF;
+	payload[2] = current2 >> 8;
+	payload[3] = current2 & 0xFF;
+	payload[4] = current3 >> 8;
+	payload[5] = current3 & 0xFF;
 
-    CAN_App_SendFrame(ack_id, payload, 6);
+	CAN_App_SendFrame(ack_id, payload, 6);
 }
 
 
 void CAN_Logic_HandleFrame(uint32_t id, uint8_t *data, uint8_t len) {
-    switch(id) {
-        case CAN_ID_GET_SERVO_CURRENT_1_3_REQ:
-        	CAN_Logic_Handle_GetCurrents_Servos_1_3(len);
-            break;
-        case CAN_ID_GET_SERVO_CURRENT_4_6_REQ:
-			CAN_Logic_Handle_GetCurrents_Servos_4_6(len);
-			break;
-        case CAN_ID_GET_SERVO_CURRENT_7_9_REQ:
-			CAN_Logic_Handle_GetCurrents_Servos_7_9(len);
-			break;
-        case CAN_ID_GET_SERVO_CURRENT_10_12_REQ:
-			CAN_Logic_Handle_GetCurrents_Servos_10_12(len);
-			break;
-        case CAN_ID_GET_SERVO_CURRENT_13_15_REQ:
-			CAN_Logic_Handle_GetCurrents_Servos_13_15(len);
-			break;
-        case CAN_ID_GET_SERVO_CURRENT_16_18_REQ:
-			CAN_Logic_Handle_GetCurrents_Servos_16_18(len);
-			break;
+	switch(id) {
+	case CAN_ID_GET_SERVO_CURRENT_1_3_REQ:
+		CAN_Logic_Handle_GetCurrents_Servos_1_3(len);
+		break;
+	case CAN_ID_GET_SERVO_CURRENT_4_6_REQ:
+		CAN_Logic_Handle_GetCurrents_Servos_4_6(len);
+		break;
+	case CAN_ID_GET_SERVO_CURRENT_7_9_REQ:
+		CAN_Logic_Handle_GetCurrents_Servos_7_9(len);
+		break;
+	case CAN_ID_GET_SERVO_CURRENT_10_12_REQ:
+		CAN_Logic_Handle_GetCurrents_Servos_10_12(len);
+		break;
+	case CAN_ID_GET_SERVO_CURRENT_13_15_REQ:
+		CAN_Logic_Handle_GetCurrents_Servos_13_15(len);
+		break;
+	case CAN_ID_GET_SERVO_CURRENT_16_18_REQ:
+		CAN_Logic_Handle_GetCurrents_Servos_16_18(len);
+		break;
 
 
-        case CAN_ID_GET_I_MANIP_I_5V_POW_I_3V3_POW_REQ:
-        	CAN_Logic_Handle_GetCurrents_I_MANIP_I_5V_POW_I_3V3_POW(len);
-			break;
-        case CAN_ID_GET_I_STANDBY_I_SUPPLY_REQ:
-        	CAN_Logic_Handle_GetCurrents_I_STANDBY_I_SUPPLY(len);
-			break;
+	case CAN_ID_GET_I_MANIP_I_5V_POW_I_3V3_POW_REQ:
+		CAN_Logic_Handle_GetCurrents_I_MANIP_I_5V_POW_I_3V3_POW(len);
+		break;
+	case CAN_ID_GET_I_STANDBY_I_SUPPLY_REQ:
+		CAN_Logic_Handle_GetCurrents_I_STANDBY_I_SUPPLY(len);
+		break;
 
 
-        case CAN_ID_GET_U_CONVETERS_1_3_REQ:
-        	CAN_Logic_Handle_GetVoltages_Converters_1_3(len);
-			break;
-        case CAN_ID_GET_U_CONVETERS_4_5_REQ:
-			CAN_Logic_Handle_GetVoltages_Converters_4_5(len);
-			break;
-        case CAN_ID_GET_U_SUPPLY_U_BAT_REQ:
-        	CAN_Logic_Handle_GetVoltages_U_SUPPLY_U_BAT(len);
-			break;
+	case CAN_ID_GET_U_CONVETERS_1_3_REQ:
+		CAN_Logic_Handle_GetVoltages_Converters_1_3(len);
+		break;
+	case CAN_ID_GET_U_CONVETERS_4_5_REQ:
+		CAN_Logic_Handle_GetVoltages_Converters_4_5(len);
+		break;
+	case CAN_ID_GET_U_SUPPLY_U_BAT_REQ:
+		CAN_Logic_Handle_GetVoltages_U_SUPPLY_U_BAT(len);
+		break;
 
 
-        case CAN_ID_GET_TEMPERATURES_REQ:
-        	CAN_Logic_Handle_GetTemperatures(len);
+	case CAN_ID_GET_TEMPERATURES_REQ:
+		CAN_Logic_Handle_GetTemperatures(len);
 
 
-        case CAN_ID_SET_CONVERTER1_VOLTAGE_REQ:
-        	CAN_Logic_Handle_SetVoltage_Converters1_3(data, len, 0);
-			break;
-        case CAN_ID_SET_CONVERTER2_VOLTAGE_REQ:
-        	CAN_Logic_Handle_SetVoltage_Converters1_3(data, len, 1);
-			break;
-        case CAN_ID_SET_CONVERTER3_VOLTAGE_REQ:
-        	CAN_Logic_Handle_SetVoltage_Converters1_3(data, len, 2);
-			break;
-        case CAN_ID_SET_CONVERTER4_VOLTAGE_REQ:
-			CAN_Logic_Handle_SetVoltage_Converter4(data, len, 3);
-			break;
+	case CAN_ID_SET_CONVERTER1_VOLTAGE_REQ:
+		CAN_Logic_Handle_SetVoltage_Converters1_3(data, len, 0);
+		break;
+	case CAN_ID_SET_CONVERTER2_VOLTAGE_REQ:
+		CAN_Logic_Handle_SetVoltage_Converters1_3(data, len, 1);
+		break;
+	case CAN_ID_SET_CONVERTER3_VOLTAGE_REQ:
+		CAN_Logic_Handle_SetVoltage_Converters1_3(data, len, 2);
+		break;
+	case CAN_ID_SET_CONVERTER4_VOLTAGE_REQ:
+		CAN_Logic_Handle_SetVoltage_Converter4(data, len, 3);
+		break;
 
-        case CAN_ID_SET_SERVOS_STATES_REQ:
-        	CAN_Logic_Handle_SetServosStates(data, len);
-        	break;
+	case CAN_ID_SET_SERVOS_STATES_REQ:
+		CAN_Logic_Handle_SetServosStates(data, len);
+		break;
+	case CAN_ID_SET_MANIP_STATE_REQ:
+		CAN_Logic_Handle_SetManipState(data, len);
+		break;
+	case CAN_ID_SET_VOLTAGE_OUTPUTS_STATES_REQ:
+		CAN_Logic_Handle_SetVoltageOutputsStates(data, len);
+		break;
 
-        default:
-            break;
-    }
+	default:
+		break;
+	}
 }
 
 
@@ -138,31 +147,31 @@ void CAN_Logic_Handle_GetCurrents_Servos_1_3(uint8_t len) {
 
 void CAN_Logic_Handle_GetCurrents_Servos_4_6(uint8_t len) {
 	if(len != 0) return;
-    CAN_Logic_ReadServoGroup(3, CAN_ID_GET_SERVO_CURRENT_4_6_ACK);
+	CAN_Logic_ReadServoGroup(3, CAN_ID_GET_SERVO_CURRENT_4_6_ACK);
 }
 
 
 void CAN_Logic_Handle_GetCurrents_Servos_7_9(uint8_t len) {
 	if(len != 0) return;
-    CAN_Logic_ReadServoGroup(6, CAN_ID_GET_SERVO_CURRENT_7_9_ACK);
+	CAN_Logic_ReadServoGroup(6, CAN_ID_GET_SERVO_CURRENT_7_9_ACK);
 }
 
 
 void CAN_Logic_Handle_GetCurrents_Servos_10_12(uint8_t len) {
 	if(len != 0) return;
-    CAN_Logic_ReadServoGroup(9, CAN_ID_GET_SERVO_CURRENT_10_12_ACK);
+	CAN_Logic_ReadServoGroup(9, CAN_ID_GET_SERVO_CURRENT_10_12_ACK);
 }
 
 
 void CAN_Logic_Handle_GetCurrents_Servos_13_15(uint8_t len) {
 	if(len != 0) return;
-    CAN_Logic_ReadServoGroup(12, CAN_ID_GET_SERVO_CURRENT_13_15_ACK);
+	CAN_Logic_ReadServoGroup(12, CAN_ID_GET_SERVO_CURRENT_13_15_ACK);
 }
 
 
 void CAN_Logic_Handle_GetCurrents_Servos_16_18(uint8_t len) {
 	if(len != 0) return;
-    CAN_Logic_ReadServoGroup(15, CAN_ID_GET_SERVO_CURRENT_16_18_ACK);
+	CAN_Logic_ReadServoGroup(15, CAN_ID_GET_SERVO_CURRENT_16_18_ACK);
 }
 
 
@@ -311,16 +320,32 @@ void CAN_Logic_Handle_SetVoltage_Converter4(uint8_t* data, uint8_t len, uint8_t 
 
 
 void CAN_Logic_Handle_SetServosStates(uint8_t* data, uint8_t len) {
-    if(len != 3) return;
+	if(len != 3) return;
 
-    uint32_t mask =
-        (data[0] << 16) |
-        (data[1] << 8)  |
-        data[2];
+	uint32_t mask =
+			(data[0] << 16) |
+			(data[1] << 8)  |
+			data[2];
 
-    mask &= 0x3FFFF;
+	mask &= 0x3FFFF;
 
-    Servos_SetTargetMask(mask);
+	Servos_SetTargetMask(mask);
+}
+
+
+void CAN_Logic_Handle_SetVoltageOutputsStates(uint8_t* data, uint8_t len) {
+	if(len != 2) return;
+	uint8_t mask = (data[0] & 0x07)        // bits 0–2 - VOUT1–3
+			| ((data[1] & 0x07) << 3); // bits 3–5 - VOUT4–6
+
+			VoltageOutputs_SetTargetMask(mask);
+}
+
+
+void CAN_Logic_Handle_SetManipState(uint8_t* data, uint8_t len) {
+	if(len != 1) return;
+	manip_conv_en = data[0] & 0x01;
+	manip_conv_en_done = 0;
 }
 
 
@@ -337,15 +362,15 @@ void CAN_Logic_Tick(void) {
 			payload[1] = voltage_mV & 0xFF;
 
 			switch(i) {
-				case 0:
-					CAN_App_SendFrame(CAN_ID_SET_CONVERTER1_VOLTAGE_ACK, payload, 2);
-					break;
-				case 1:
-					CAN_App_SendFrame(CAN_ID_SET_CONVERTER2_VOLTAGE_ACK, payload, 2);
-					break;
-				case 2:
-					CAN_App_SendFrame(CAN_ID_SET_CONVERTER3_VOLTAGE_ACK, payload, 2);
-					break;
+			case 0:
+				CAN_App_SendFrame(CAN_ID_SET_CONVERTER1_VOLTAGE_ACK, payload, 2);
+				break;
+			case 1:
+				CAN_App_SendFrame(CAN_ID_SET_CONVERTER2_VOLTAGE_ACK, payload, 2);
+				break;
+			case 2:
+				CAN_App_SendFrame(CAN_ID_SET_CONVERTER3_VOLTAGE_ACK, payload, 2);
+				break;
 			}
 			pots[i].done = 2;
 		}
@@ -364,7 +389,7 @@ void CAN_Logic_Tick(void) {
 		pots[3].done = 2;
 	}
 
-	 if(servos.done == 1) {
+	if(servos.done == 1) {
 		uint8_t payload[3];
 		payload[0] = (servos.current_mask >> 16) & 0xFF;
 		payload[1] = (servos.current_mask >> 8) & 0xFF;
@@ -373,6 +398,21 @@ void CAN_Logic_Tick(void) {
 		CAN_App_SendFrame(CAN_ID_SET_SERVOS_STATES_ACK, payload, 3);
 
 		servos.done = 2;
+	}
+
+	if(vouts.done == 1) {
+		uint8_t payload[3];
+		payload[0] = vouts.current_mask & 0x07; //VOUT1-3
+		payload[1] = (vouts.current_mask >> 3) & 0x07; //VOUT4-6
+
+		CAN_App_SendFrame(CAN_ID_SET_VOLTAGE_OUTPUTS_STATES_ACK, payload, 2);
+		vouts.done = 2;
+	}
+
+	if(manip_conv_en_done == 1) {
+		uint8_t payload = manip_conv_en;
+		CAN_App_SendFrame(CAN_ID_SET_MANIP_STATE_ACK, &payload, 1);
+		manip_conv_en_done = 2;
 	}
 }
 

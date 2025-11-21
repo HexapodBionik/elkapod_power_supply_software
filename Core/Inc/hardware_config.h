@@ -6,6 +6,7 @@
 #define ADC_MAX_INSTANCES 8
 
 #define SERVO_COUNT 18
+#define VOUT_COUNT 6
 
 
 // I2C addresses
@@ -106,6 +107,7 @@
 // constants values and other coefficients
 #define CONV_EN_OC_DELAY 50
 #define EN_SERVOS_TICK_DELAY 25
+#define VOUT_TICK_DELAY 25
 
 
 // CAN IDs

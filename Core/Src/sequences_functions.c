@@ -51,12 +51,7 @@ void power_on_seqence(void) {
 	HAL_GPIO_WritePin(MUX_A_GPIO_Port, MUX_A_Pin, GPIO_PIN_RESET);
 
 	// disable additional outputs
-	HAL_GPIO_WritePin(V_OUT_EN1_GPIO_Port, V_OUT_EN1_Pin, GPIO_PIN_RESET);
-	HAL_GPIO_WritePin(V_OUT_EN2_GPIO_Port, V_OUT_EN2_Pin, GPIO_PIN_RESET);
-	HAL_GPIO_WritePin(V_OUT_EN3_GPIO_Port, V_OUT_EN3_Pin, GPIO_PIN_RESET);
-	HAL_GPIO_WritePin(V_OUT_EN4_GPIO_Port, V_OUT_EN4_Pin, GPIO_PIN_SET);
-	HAL_GPIO_WritePin(V_OUT_EN5_GPIO_Port, V_OUT_EN5_Pin, GPIO_PIN_SET);
-	HAL_GPIO_WritePin(V_OUT_EN6_GPIO_Port, V_OUT_EN6_Pin, GPIO_PIN_SET);
+	VoltageOutputs_ApplyImmediateAllOff();
 
 	HAL_Delay(150);
 
@@ -98,8 +93,11 @@ void wake_up_sequence(void) {
 	// disable all servos outputs
 	Servos_ApplyImmediateOff(0x3FFFF);
 
-	// enable all converters, disable HVC, enable POTs
-	PCF7485_write_buffer_blocking(&expander1, 0b01100000);
+	// disable additional outputs
+	VoltageOutputs_ApplyImmediateAllOff();
+
+	// enable converters 1-3 and 5, disable HVC, enable POTs
+	PCF7485_write_buffer_blocking(&expander1, 0b01101000);
 
 	HAL_Delay(150);
 
