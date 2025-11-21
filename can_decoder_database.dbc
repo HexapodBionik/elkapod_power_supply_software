@@ -1,4 +1,4 @@
-VERSION "MyDevice CAN Protocol"
+VERSION "Elkapod Power Supply CAN Protocol"
 
 NS_ :
     NS_DESC_
@@ -32,6 +32,27 @@ NS_ :
 BS_:
 
 BU_: ECU
+
+BO_ 107 CAN_ID_SET_SERVOS_STATES_ACK: 3 ELKAPOD_PSU
+    SG_ Servo1  : 6|1@0+ (1,0) [0|1] "" ELKAPOD_PSU
+    SG_ Servo2  : 7|1@0+ (1,0) [0|1] "" ELKAPOD_PSU
+    SG_ Servo3  : 8|1@0+ (1,0) [0|1] "" ELKAPOD_PSU
+    SG_ Servo4  : 9|1@0+ (1,0) [0|1] "" ELKAPOD_PSU
+    SG_ Servo5  : 10|1@0+ (1,0) [0|1] "" ELKAPOD_PSU
+    SG_ Servo6  : 11|1@0+ (1,0) [0|1] "" ELKAPOD_PSU
+    SG_ Servo7  : 12|1@0+ (1,0) [0|1] "" ELKAPOD_PSU
+    SG_ Servo8  : 13|1@0+ (1,0) [0|1] "" ELKAPOD_PSU
+    SG_ Servo9  : 14|1@0+ (1,0) [0|1] "" ELKAPOD_PSU
+    SG_ Servo10 : 15|1@0+ (1,0) [0|1] "" ELKAPOD_PSU
+    SG_ Servo11 : 16|1@0+ (1,0) [0|1] "" ELKAPOD_PSU
+    SG_ Servo12 : 17|1@0+ (1,0) [0|1] "" ELKAPOD_PSU
+    SG_ Servo13 : 18|1@0+ (1,0) [0|1] "" ELKAPOD_PSU
+    SG_ Servo14 : 19|1@0+ (1,0) [0|1] "" ELKAPOD_PSU
+    SG_ Servo15 : 20|1@0+ (1,0) [0|1] "" ELKAPOD_PSU
+    SG_ Servo16 : 21|1@0+ (1,0) [0|1] "" ELKAPOD_PSU
+    SG_ Servo17 : 22|1@0+ (1,0) [0|1] "" ELKAPOD_PSU
+    SG_ Servo18 : 23|1@0+ (1,0) [0|1] "" ELKAPOD_PSU
+
 
 BO_ 113 CAN_ID_GET_SERVO_CURRENT_1_3_ACK: 6 ELKAPOD_PSU
     SG_ I_servo1      : 7|16@0+ (1,0) [0|65535] "mA" ELKAPOD_PSU

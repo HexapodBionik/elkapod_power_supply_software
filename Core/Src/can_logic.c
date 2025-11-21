@@ -16,7 +16,10 @@ extern float U_supply;
 extern float U_bat_ADC;
 
 extern float temperatures[3];
+
 extern PotChannel pots[4];
+extern ServoControllerState servos;
+
 
 const uint16_t CONV1_3_MAX_VOLTAGE =
     CALC_CONVERTER_VOLTAGE(CONV1_3_RFB1, CONV1_3_RFB2, CONV1_3_RFB3, POT_RESISTANCE_OFFSET);
@@ -116,6 +119,10 @@ void CAN_Logic_HandleFrame(uint32_t id, uint8_t *data, uint8_t len) {
         case CAN_ID_SET_CONVERTER4_VOLTAGE_REQ:
 			CAN_Logic_Handle_SetVoltage_Converter4(data, len, 3);
 			break;
+
+        case CAN_ID_SET_SERVOS_STATES_REQ:
+        	CAN_Logic_Handle_SetServosStates(data, len);
+        	break;
 
         default:
             break;
@@ -303,6 +310,20 @@ void CAN_Logic_Handle_SetVoltage_Converter4(uint8_t* data, uint8_t len, uint8_t 
 }
 
 
+void CAN_Logic_Handle_SetServosStates(uint8_t* data, uint8_t len) {
+    if(len != 3) return;
+
+    uint32_t mask =
+        (data[0] << 16) |
+        (data[1] << 8)  |
+        data[2];
+
+    mask &= 0x3FFFF;
+
+    Servos_SetTargetMask(mask);
+}
+
+
 void CAN_Logic_Tick(void) {
 	// sending ACK for SET_CONVERTER commends
 	for(uint8_t i = 0; i < 3; i++) {
@@ -341,6 +362,17 @@ void CAN_Logic_Tick(void) {
 
 		CAN_App_SendFrame(CAN_ID_SET_CONVERTER4_VOLTAGE_ACK, payload, 2);
 		pots[3].done = 2;
+	}
+
+	 if(servos.done == 1) {
+		uint8_t payload[3];
+		payload[0] = (servos.current_mask >> 16) & 0xFF;
+		payload[1] = (servos.current_mask >> 8) & 0xFF;
+		payload[2] =  servos.current_mask & 0xFF;
+
+		CAN_App_SendFrame(CAN_ID_SET_SERVOS_STATES_ACK, payload, 3);
+
+		servos.done = 2;
 	}
 }
 

@@ -65,7 +65,7 @@ void MX_GPIO_Init(void)
                           |V_OUT_EN1_Pin, GPIO_PIN_RESET);
 
   /*Configure GPIO pin Output Level */
-  HAL_GPIO_WritePin(GPIOG, SERVO12_EN_Pin|SERVO11_EN_Pin|BAT_INDICATOR4_Pin|BAT_INDICATOR5_Pin
+  HAL_GPIO_WritePin(GPIOG, SERVO12_EN_Pin|SERVO11_EN_Pin|LED_BAT_INDICATOR4_Pin|LED_BAT_INDICATOR5_Pin
                           |LED_FATAL_ERROR_Pin|LED_POWER_ON_Pin|V_OUT_EN6_Pin|V_OUT_EN5_Pin
                           |V_OUT_EN4_Pin, GPIO_PIN_RESET);
 
@@ -76,7 +76,7 @@ void MX_GPIO_Init(void)
 
   /*Configure GPIO pin Output Level */
   HAL_GPIO_WritePin(GPIOD, LED_CONV5_Pin|LED_STATUS4_Pin|LED_STATUS3_Pin|LED_STATUS2_Pin
-                          |LED_STATUS1_Pin|BAT_INDICATOR1_Pin|BAT_INDICATOR2_Pin|BAT_INDICATOR3_Pin
+                          |LED_STATUS1_Pin|LED_BAT_INDICATOR1_Pin|LED_BAT_INDICATOR2_Pin|LED_BAT_INDICATOR3_Pin
                           |OPTIONAL_Pin|MUX_B_Pin|MUX_A_Pin, GPIO_PIN_RESET);
 
   /*Configure GPIO pin : SW_POWER_ON_Pin */
@@ -111,10 +111,10 @@ void MX_GPIO_Init(void)
   GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
   HAL_GPIO_Init(GPIOB, &GPIO_InitStruct);
 
-  /*Configure GPIO pins : SERVO12_EN_Pin SERVO11_EN_Pin BAT_INDICATOR4_Pin BAT_INDICATOR5_Pin
+  /*Configure GPIO pins : SERVO12_EN_Pin SERVO11_EN_Pin LED_BAT_INDICATOR4_Pin LED_BAT_INDICATOR5_Pin
                            LED_FATAL_ERROR_Pin LED_POWER_ON_Pin V_OUT_EN6_Pin V_OUT_EN5_Pin
                            V_OUT_EN4_Pin */
-  GPIO_InitStruct.Pin = SERVO12_EN_Pin|SERVO11_EN_Pin|BAT_INDICATOR4_Pin|BAT_INDICATOR5_Pin
+  GPIO_InitStruct.Pin = SERVO12_EN_Pin|SERVO11_EN_Pin|LED_BAT_INDICATOR4_Pin|LED_BAT_INDICATOR5_Pin
                           |LED_FATAL_ERROR_Pin|LED_POWER_ON_Pin|V_OUT_EN6_Pin|V_OUT_EN5_Pin
                           |V_OUT_EN4_Pin;
   GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
@@ -134,10 +134,10 @@ void MX_GPIO_Init(void)
   HAL_GPIO_Init(GPIOE, &GPIO_InitStruct);
 
   /*Configure GPIO pins : LED_CONV5_Pin LED_STATUS4_Pin LED_STATUS3_Pin LED_STATUS2_Pin
-                           LED_STATUS1_Pin BAT_INDICATOR1_Pin BAT_INDICATOR2_Pin BAT_INDICATOR3_Pin
+                           LED_STATUS1_Pin LED_BAT_INDICATOR1_Pin LED_BAT_INDICATOR2_Pin LED_BAT_INDICATOR3_Pin
                            OPTIONAL_Pin MUX_B_Pin MUX_A_Pin */
   GPIO_InitStruct.Pin = LED_CONV5_Pin|LED_STATUS4_Pin|LED_STATUS3_Pin|LED_STATUS2_Pin
-                          |LED_STATUS1_Pin|BAT_INDICATOR1_Pin|BAT_INDICATOR2_Pin|BAT_INDICATOR3_Pin
+                          |LED_STATUS1_Pin|LED_BAT_INDICATOR1_Pin|LED_BAT_INDICATOR2_Pin|LED_BAT_INDICATOR3_Pin
                           |OPTIONAL_Pin|MUX_B_Pin|MUX_A_Pin;
   GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
   GPIO_InitStruct.Pull = GPIO_NOPULL;
