@@ -38,6 +38,7 @@
 #include "pots_controller.h"
 #include "servos_controller.h"
 #include "voltage_outputs_controller.h"
+#include "buzzer_controller.h"
 #include "sequences_functions.h"
 
 
@@ -83,16 +84,18 @@ PotChannel pots[4] = {
 };
 
 ServoControllerState servos = {
-    .target_mask = 0,
-    .current_mask = 0,
-    .done = 2
+		.target_mask = 0,
+		.current_mask = 0,
+		.done = 2
 };
 
 VoltageOutputsController vouts = {
-    .current_mask = 0,
-    .target_mask = 0,
-    .done = 2
+		.current_mask = 0,
+		.target_mask = 0,
+		.done = 2
 };
+
+BuzzerController buzzer = {0};
 
 // buffers and variables for SPI ADCs
 uint16_t spi_adc_samples[SPI_ADC_COUNT][SPI_ADC_AVG_SAMPLES] = {0};
@@ -150,6 +153,11 @@ uint32_t last_tick_toggle_en_conv = 0;
 volatile uint8_t system_in_sleep = 0;
 volatile uint8_t wake_up_sequence_request = 0;
 volatile uint8_t power_off_sequence_request = 0;
+volatile uint32_t last_sw_emergency_tick = 0;
+volatile uint32_t last_sw_power_on_tick = 0;
+volatile uint32_t last_sleep_transition_tick = 0;
+uint8_t turn_off_supply_request = 0;
+volatile uint8_t pressed_off_button = 0;
 
 /* USER CODE END PV */
 
@@ -182,25 +190,35 @@ static inline float adc_to_temperature(uint16_t adc_val, float a, float b) {
 void Wakeup_From_Stop1(void) {
 	HAL_ResumeTick();
 	SystemClock_Config();
+	PeriphCommonClock_Config();
+	HAL_Delay(2);
 
 	MX_GPIO_Init();
 	MX_DMA_Init();
-	MX_ADC1_Init();
-	MX_ADC3_Init();
-	MX_CAN1_Init();
-	MX_I2C1_Init();
-	MX_I2C2_Init();
-	MX_SPI3_Init();
+	HAL_Delay(1);
+
 	MX_TIM3_Init();
+	MX_TIM7_Init();
 	MX_TIM8_Init();
 	MX_TIM17_Init();
-	MX_TIM7_Init();
+	HAL_Delay(1);
+
+	MX_SPI3_Init();
+	MX_I2C1_Init();
+	MX_I2C2_Init();
+	HAL_Delay(1);
+
+	MX_ADC1_Init();
+	MX_ADC3_Init();
+	HAL_Delay(1);
+
+	MX_CAN1_Init();
+	HAL_Delay(1);
 
 	HAL_ADCEx_Calibration_Start(&hadc1, ADC_SINGLE_ENDED);
 	HAL_ADCEx_Calibration_Start(&hadc3, ADC_SINGLE_ENDED);
 
 	system_in_sleep = 0;
-	wake_up_sequence_request = 1;
 }
 
 
@@ -208,6 +226,20 @@ void EnterStop1(void) {
 	system_in_sleep = 1;
 	HAL_SuspendTick();
 	HAL_PWR_EnterSTOPMode(PWR_LOWPOWERREGULATOR_ON, PWR_STOPENTRY_WFI);
+}
+
+
+void Mask_EXTI_except_POWER_ON(void) {
+    HAL_NVIC_DisableIRQ(EXTI0_IRQn);      // CONV2_OC
+    HAL_NVIC_DisableIRQ(EXTI1_IRQn);      // CONV3_OC
+    HAL_NVIC_DisableIRQ(EXTI9_5_IRQn);    // SW_EMERGENCY + CONV1_OC
+}
+
+void Unmask_all_EXTI(void) {
+    HAL_NVIC_EnableIRQ(EXTI0_IRQn);
+    HAL_NVIC_EnableIRQ(EXTI1_IRQn);
+    HAL_NVIC_EnableIRQ(EXTI9_5_IRQn);
+    HAL_NVIC_EnableIRQ(EXTI15_10_IRQn);   // POWER_ON + CONV4_OC + CONV5_OC
 }
 
 
@@ -230,55 +262,57 @@ uint16_t converter_voltage_to_pot_value(float voltage, float R_FB1,
 /* USER CODE END 0 */
 
 /**
-  * @brief  The application entry point.
-  * @retval int
-  */
+ * @brief  The application entry point.
+ * @retval int
+ */
 int main(void)
 {
 
-  /* USER CODE BEGIN 1 */
+	/* USER CODE BEGIN 1 */
 
 	//  uint8_t pot_value = 1;
 	uint8_t converters_en = 1;
 	uint16_t main_iteration = 0;
 
+	uint16_t turn_off_supply_tick = 0;
 
 
-  /* USER CODE END 1 */
 
-  /* MCU Configuration--------------------------------------------------------*/
+	/* USER CODE END 1 */
 
-  /* Reset of all peripherals, Initializes the Flash interface and the Systick. */
-  HAL_Init();
+	/* MCU Configuration--------------------------------------------------------*/
 
-  /* USER CODE BEGIN Init */
+	/* Reset of all peripherals, Initializes the Flash interface and the Systick. */
+	HAL_Init();
 
-  /* USER CODE END Init */
+	/* USER CODE BEGIN Init */
 
-  /* Configure the system clock */
-  SystemClock_Config();
+	/* USER CODE END Init */
 
-  /* Configure the peripherals common clocks */
-  PeriphCommonClock_Config();
+	/* Configure the system clock */
+	SystemClock_Config();
 
-  /* USER CODE BEGIN SysInit */
+	/* Configure the peripherals common clocks */
+	PeriphCommonClock_Config();
 
-  /* USER CODE END SysInit */
+	/* USER CODE BEGIN SysInit */
 
-  /* Initialize all configured peripherals */
-  MX_GPIO_Init();
-  MX_DMA_Init();
-  MX_ADC1_Init();
-  MX_ADC3_Init();
-  MX_CAN1_Init();
-  MX_I2C1_Init();
-  MX_I2C2_Init();
-  MX_SPI3_Init();
-  MX_TIM3_Init();
-  MX_TIM8_Init();
-  MX_TIM17_Init();
-  MX_TIM7_Init();
-  /* USER CODE BEGIN 2 */
+	/* USER CODE END SysInit */
+
+	/* Initialize all configured peripherals */
+	MX_GPIO_Init();
+	MX_DMA_Init();
+	MX_ADC1_Init();
+	MX_ADC3_Init();
+	MX_CAN1_Init();
+	MX_I2C1_Init();
+	MX_I2C2_Init();
+	MX_SPI3_Init();
+	MX_TIM3_Init();
+	MX_TIM8_Init();
+	MX_TIM17_Init();
+	MX_TIM7_Init();
+	/* USER CODE BEGIN 2 */
 	HAL_ADCEx_Calibration_Start(&hadc1, ADC_SINGLE_ENDED);
 	HAL_ADCEx_Calibration_Start(&hadc3, ADC_SINGLE_ENDED);
 
@@ -286,11 +320,8 @@ int main(void)
 
 	power_on_seqence();
 
-//	if(CAN_App_Init(CAN_ID_MIN, CAN_ID_MAX) != HAL_OK) {
-//		Error_Handler();
-//	}
-
 	// Go to standby mode
+	Mask_EXTI_except_POWER_ON();
 	EnterStop1();
 
 
@@ -301,23 +332,39 @@ int main(void)
 
 
 
-  /* USER CODE END 2 */
+	/* USER CODE END 2 */
 
-  /* Infinite loop */
-  /* USER CODE BEGIN WHILE */
+	/* Infinite loop */
+	/* USER CODE BEGIN WHILE */
 
 	while (1)
 	{
 		if(power_off_sequence_request == 1) {
+			last_sleep_transition_tick = HAL_GetTick();
+			Mask_EXTI_except_POWER_ON();
 			power_off_sequence();
 			power_off_sequence_request = 0;
 			EnterStop1();
 		}
 
 		if(wake_up_sequence_request == 1) {
+			last_sleep_transition_tick = HAL_GetTick();
+			Wakeup_From_Stop1();
 			wake_up_sequence();
+			Unmask_all_EXTI();
 			wake_up_sequence_request = 0;
 		}
+
+		if(turn_off_supply_request == 1) {
+			if(turn_off_supply_tick >= TURN_OFF_POWER_SUPPLY_TICK_DELAY) {
+				power_off_sequence_request = 1;
+				turn_off_supply_request = 0;
+				turn_off_supply_tick = 0;
+			}
+			turn_off_supply_tick++;
+		}
+
+
 
 		HAL_GPIO_TogglePin(LED_STATUS1_GPIO_Port, LED_STATUS1_Pin);
 		HAL_GPIO_TogglePin(LED_STATUS2_GPIO_Port, LED_STATUS2_Pin);
@@ -385,7 +432,6 @@ int main(void)
 				converters_en = 0;
 
 				HAL_Delay(1);
-//				EnterStop1();
 			}
 		}
 
@@ -412,6 +458,7 @@ int main(void)
 		Pots_Tick(); // setting voltages in converters
 		Servos_Tick();
 		VoltageOutputs_Tick();
+		Buzzer_Tick();
 		CAN_Logic_Tick();
 
 		HAL_Delay(1);
@@ -419,99 +466,112 @@ int main(void)
 
 
 
-    /* USER CODE END WHILE */
+		/* USER CODE END WHILE */
 
-    /* USER CODE BEGIN 3 */
+		/* USER CODE BEGIN 3 */
 	}
-  /* USER CODE END 3 */
+	/* USER CODE END 3 */
 }
 
 /**
-  * @brief System Clock Configuration
-  * @retval None
-  */
+ * @brief System Clock Configuration
+ * @retval None
+ */
 void SystemClock_Config(void)
 {
-  RCC_OscInitTypeDef RCC_OscInitStruct = {0};
-  RCC_ClkInitTypeDef RCC_ClkInitStruct = {0};
+	RCC_OscInitTypeDef RCC_OscInitStruct = {0};
+	RCC_ClkInitTypeDef RCC_ClkInitStruct = {0};
 
-  /** Configure the main internal regulator output voltage
-  */
-  if (HAL_PWREx_ControlVoltageScaling(PWR_REGULATOR_VOLTAGE_SCALE1) != HAL_OK)
-  {
-    Error_Handler();
-  }
+	/** Configure the main internal regulator output voltage
+	 */
+	if (HAL_PWREx_ControlVoltageScaling(PWR_REGULATOR_VOLTAGE_SCALE1) != HAL_OK)
+	{
+		Error_Handler();
+	}
 
-  /** Initializes the RCC Oscillators according to the specified parameters
-  * in the RCC_OscInitTypeDef structure.
-  */
-  RCC_OscInitStruct.OscillatorType = RCC_OSCILLATORTYPE_HSE;
-  RCC_OscInitStruct.HSEState = RCC_HSE_ON;
-  RCC_OscInitStruct.PLL.PLLState = RCC_PLL_ON;
-  RCC_OscInitStruct.PLL.PLLSource = RCC_PLLSOURCE_HSE;
-  RCC_OscInitStruct.PLL.PLLM = 2;
-  RCC_OscInitStruct.PLL.PLLN = 10;
-  RCC_OscInitStruct.PLL.PLLP = RCC_PLLP_DIV7;
-  RCC_OscInitStruct.PLL.PLLQ = RCC_PLLQ_DIV2;
-  RCC_OscInitStruct.PLL.PLLR = RCC_PLLR_DIV2;
-  if (HAL_RCC_OscConfig(&RCC_OscInitStruct) != HAL_OK)
-  {
-    Error_Handler();
-  }
+	/** Initializes the RCC Oscillators according to the specified parameters
+	 * in the RCC_OscInitTypeDef structure.
+	 */
+	RCC_OscInitStruct.OscillatorType = RCC_OSCILLATORTYPE_HSE;
+	RCC_OscInitStruct.HSEState = RCC_HSE_ON;
+	RCC_OscInitStruct.PLL.PLLState = RCC_PLL_ON;
+	RCC_OscInitStruct.PLL.PLLSource = RCC_PLLSOURCE_HSE;
+	RCC_OscInitStruct.PLL.PLLM = 2;
+	RCC_OscInitStruct.PLL.PLLN = 10;
+	RCC_OscInitStruct.PLL.PLLP = RCC_PLLP_DIV7;
+	RCC_OscInitStruct.PLL.PLLQ = RCC_PLLQ_DIV2;
+	RCC_OscInitStruct.PLL.PLLR = RCC_PLLR_DIV2;
+	if (HAL_RCC_OscConfig(&RCC_OscInitStruct) != HAL_OK)
+	{
+		Error_Handler();
+	}
 
-  /** Initializes the CPU, AHB and APB buses clocks
-  */
-  RCC_ClkInitStruct.ClockType = RCC_CLOCKTYPE_HCLK|RCC_CLOCKTYPE_SYSCLK
-                              |RCC_CLOCKTYPE_PCLK1|RCC_CLOCKTYPE_PCLK2;
-  RCC_ClkInitStruct.SYSCLKSource = RCC_SYSCLKSOURCE_PLLCLK;
-  RCC_ClkInitStruct.AHBCLKDivider = RCC_SYSCLK_DIV1;
-  RCC_ClkInitStruct.APB1CLKDivider = RCC_HCLK_DIV1;
-  RCC_ClkInitStruct.APB2CLKDivider = RCC_HCLK_DIV1;
+	/** Initializes the CPU, AHB and APB buses clocks
+	 */
+	RCC_ClkInitStruct.ClockType = RCC_CLOCKTYPE_HCLK|RCC_CLOCKTYPE_SYSCLK
+			|RCC_CLOCKTYPE_PCLK1|RCC_CLOCKTYPE_PCLK2;
+	RCC_ClkInitStruct.SYSCLKSource = RCC_SYSCLKSOURCE_PLLCLK;
+	RCC_ClkInitStruct.AHBCLKDivider = RCC_SYSCLK_DIV1;
+	RCC_ClkInitStruct.APB1CLKDivider = RCC_HCLK_DIV1;
+	RCC_ClkInitStruct.APB2CLKDivider = RCC_HCLK_DIV1;
 
-  if (HAL_RCC_ClockConfig(&RCC_ClkInitStruct, FLASH_LATENCY_4) != HAL_OK)
-  {
-    Error_Handler();
-  }
+	if (HAL_RCC_ClockConfig(&RCC_ClkInitStruct, FLASH_LATENCY_4) != HAL_OK)
+	{
+		Error_Handler();
+	}
 }
 
 /**
-  * @brief Peripherals Common Clock Configuration
-  * @retval None
-  */
+ * @brief Peripherals Common Clock Configuration
+ * @retval None
+ */
 void PeriphCommonClock_Config(void)
 {
-  RCC_PeriphCLKInitTypeDef PeriphClkInit = {0};
+	RCC_PeriphCLKInitTypeDef PeriphClkInit = {0};
 
-  /** Initializes the peripherals clock
-  */
-  PeriphClkInit.PeriphClockSelection = RCC_PERIPHCLK_ADC;
-  PeriphClkInit.AdcClockSelection = RCC_ADCCLKSOURCE_PLLSAI1;
-  PeriphClkInit.PLLSAI1.PLLSAI1Source = RCC_PLLSOURCE_HSE;
-  PeriphClkInit.PLLSAI1.PLLSAI1M = 2;
-  PeriphClkInit.PLLSAI1.PLLSAI1N = 8;
-  PeriphClkInit.PLLSAI1.PLLSAI1P = RCC_PLLP_DIV7;
-  PeriphClkInit.PLLSAI1.PLLSAI1Q = RCC_PLLQ_DIV2;
-  PeriphClkInit.PLLSAI1.PLLSAI1R = RCC_PLLR_DIV2;
-  PeriphClkInit.PLLSAI1.PLLSAI1ClockOut = RCC_PLLSAI1_ADC1CLK;
-  if (HAL_RCCEx_PeriphCLKConfig(&PeriphClkInit) != HAL_OK)
-  {
-    Error_Handler();
-  }
+	/** Initializes the peripherals clock
+	 */
+	PeriphClkInit.PeriphClockSelection = RCC_PERIPHCLK_ADC;
+	PeriphClkInit.AdcClockSelection = RCC_ADCCLKSOURCE_PLLSAI1;
+	PeriphClkInit.PLLSAI1.PLLSAI1Source = RCC_PLLSOURCE_HSE;
+	PeriphClkInit.PLLSAI1.PLLSAI1M = 2;
+	PeriphClkInit.PLLSAI1.PLLSAI1N = 8;
+	PeriphClkInit.PLLSAI1.PLLSAI1P = RCC_PLLP_DIV7;
+	PeriphClkInit.PLLSAI1.PLLSAI1Q = RCC_PLLQ_DIV2;
+	PeriphClkInit.PLLSAI1.PLLSAI1R = RCC_PLLR_DIV2;
+	PeriphClkInit.PLLSAI1.PLLSAI1ClockOut = RCC_PLLSAI1_ADC1CLK;
+	if (HAL_RCCEx_PeriphCLKConfig(&PeriphClkInit) != HAL_OK)
+	{
+		Error_Handler();
+	}
 }
 
 /* USER CODE BEGIN 4 */
 
 void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin) {
-	if(GPIO_Pin == SW_POWER_ON_Pin) {
+	uint32_t now_tick = HAL_GetTick();
+
+	if(GPIO_Pin == SW_POWER_ON_Pin && now_tick - last_sw_power_on_tick > EXTI_SW_TICK_DELAY) {
 		if (system_in_sleep == 1) {
-			Wakeup_From_Stop1();
+			wake_up_sequence_request = 1;
+		} else {
+			pressed_off_button = 1;
+			Buzzer_Start(1, BUZZ_HIGH_SHORT);
 		}
+		last_sw_power_on_tick = now_tick;
+		return;
 	}
 
-	if(GPIO_Pin == SW_EMERGENCY_Pin) {
+	if(GPIO_Pin == SW_EMERGENCY_Pin && now_tick - last_sw_emergency_tick > EXTI_SW_TICK_DELAY) {
 		if (system_in_sleep == 0) {
 			power_off_sequence_request = 1;
+			last_sw_emergency_tick = now_tick;
 		}
+		return;
+	}
+
+	if(now_tick - last_sleep_transition_tick < SLEEP_TRANSITION_TICK_DELAY) {
+		return;
 	}
 
 	if(HAL_GetTick() - last_tick_toggle_en_conv > CONV_EN_OC_DELAY) {
@@ -691,37 +751,36 @@ void spi_adc_read_callback(void* user, HAL_StatusTypeDef status, uint16_t value)
 }
 
 
-
 /* USER CODE END 4 */
 
 /**
-  * @brief  This function is executed in case of error occurrence.
-  * @retval None
-  */
+ * @brief  This function is executed in case of error occurrence.
+ * @retval None
+ */
 void Error_Handler(void)
 {
-  /* USER CODE BEGIN Error_Handler_Debug */
-	 /* User can add his own implementation to report the HAL error return state */
-	 __disable_irq();
-	 while (1)
-	 {
-	 }
-  /* USER CODE END Error_Handler_Debug */
+	/* USER CODE BEGIN Error_Handler_Debug */
+	/* User can add his own implementation to report the HAL error return state */
+	__disable_irq();
+	while (1)
+	{
+	}
+	/* USER CODE END Error_Handler_Debug */
 }
 
 #ifdef  USE_FULL_ASSERT
 /**
-  * @brief  Reports the name of the source file and the source line number
-  *         where the assert_param error has occurred.
-  * @param  file: pointer to the source file name
-  * @param  line: assert_param error line source number
-  * @retval None
-  */
+ * @brief  Reports the name of the source file and the source line number
+ *         where the assert_param error has occurred.
+ * @param  file: pointer to the source file name
+ * @param  line: assert_param error line source number
+ * @retval None
+ */
 void assert_failed(uint8_t *file, uint32_t line)
 {
-  /* USER CODE BEGIN 6 */
-	 /* User can add his own implementation to report the file name and line number,
+	/* USER CODE BEGIN 6 */
+	/* User can add his own implementation to report the file name and line number,
      ex: printf("Wrong parameters value: file %s on line %d\r\n", file, line) */
-  /* USER CODE END 6 */
+	/* USER CODE END 6 */
 }
 #endif /* USE_FULL_ASSERT */

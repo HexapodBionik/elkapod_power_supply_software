@@ -111,7 +111,7 @@ void power_on_seqence(void) {
 		ADC121S021_init(&spi_adcs[i], &hspi3, &expander2, i); // i - pin number on PCF
 	}
 
-	HAL_Delay(50);
+	HAL_Delay(1500);
 
 	// disable POTs
 	PCF7485_write_pin_blocking(&expander1, EXPANDER1_POT_EN, GPIO_PIN_SET);
@@ -142,7 +142,7 @@ void wake_up_sequence(void) {
 	// enable converters 1-3 and 5, disable HVC, enable POTs
 	PCF7485_write_buffer_blocking(&expander1, 0b01101000);
 
-	HAL_Delay(150);
+	HAL_Delay(1500);
 
 	// FAN PWM
 	Safe_Start_TIM_PWM(&htim8, TIM_CHANNEL_4, &timers.tim8_pwm_running);
@@ -154,11 +154,14 @@ void wake_up_sequence(void) {
 	// SPI ADCs timer start
 	Safe_Start_TIM_Base_IT(&htim17, &timers.tim17_running);
 
+	Pots_ResetCurrnetValue();
 	setup_pots();
 
 	if(CAN_App_Init(CAN_ID_MIN, CAN_ID_MAX) != HAL_OK) {
 		Error_Handler();
 	}
+
+	Buzzer_Start(2, BUZZ_HIGH_SHORT);
 
 }
 
@@ -184,6 +187,8 @@ void power_off_sequence(void) {
 
 	// turn off all LEDS
 	turn_off_all_LEDs();
+
+	HAL_Delay(1500);
 
 	// disable VOLTAGE_EN
 	HAL_GPIO_WritePin(VOLTAGE_EN_GPIO_Port, VOLTAGE_EN_Pin, GPIO_PIN_SET);

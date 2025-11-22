@@ -10,7 +10,7 @@ typedef struct {
     uint8_t done;
 } PotChannel;
 
-
+void Pots_ResetCurrnetValue(void);
 void Pots_Tick(void);
 
 #endif

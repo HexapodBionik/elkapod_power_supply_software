@@ -23,6 +23,11 @@ extern VoltageOutputsController vouts;
 extern uint8_t manip_conv_en;
 extern uint8_t manip_conv_en_done;
 
+extern uint8_t turn_off_supply_request;
+extern volatile uint8_t pressed_off_button;
+
+extern BuzzerController buzzer;
+
 
 const uint16_t CONV1_3_MAX_VOLTAGE =
 		CALC_CONVERTER_VOLTAGE(CONV1_3_RFB1, CONV1_3_RFB2, CONV1_3_RFB3, POT_RESISTANCE_OFFSET);
@@ -131,6 +136,14 @@ void CAN_Logic_HandleFrame(uint32_t id, uint8_t *data, uint8_t len) {
 		break;
 	case CAN_ID_SET_VOLTAGE_OUTPUTS_STATES_REQ:
 		CAN_Logic_Handle_SetVoltageOutputsStates(data, len);
+		break;
+
+	case CAN_ID_TURN_OFF_REQ:
+		CAN_Logic_Handle_TurnOffPowerSupply(len);
+		break;
+
+	case CAN_ID_USE_BUZZER:
+		CAN_Logic_Handle_Buzzer(data, len);
 		break;
 
 	default:
@@ -338,7 +351,7 @@ void CAN_Logic_Handle_SetVoltageOutputsStates(uint8_t* data, uint8_t len) {
 	uint8_t mask = (data[0] & 0x07)        // bits 0–2 - VOUT1–3
 			| ((data[1] & 0x07) << 3); // bits 3–5 - VOUT4–6
 
-			VoltageOutputs_SetTargetMask(mask);
+	VoltageOutputs_SetTargetMask(mask);
 }
 
 
@@ -346,6 +359,27 @@ void CAN_Logic_Handle_SetManipState(uint8_t* data, uint8_t len) {
 	if(len != 1) return;
 	manip_conv_en = data[0] & 0x01;
 	manip_conv_en_done = 0;
+}
+
+
+void CAN_Logic_Handle_TurnOffPowerSupply(uint8_t len) {
+	if(len != 0) return;
+	turn_off_supply_request = 1;
+
+	Buzzer_Start(2, BUZZ_HIGH_SHORT);
+	CAN_App_SendFrame(CAN_ID_TURN_OFF_ACK, NULL, 0);
+}
+
+
+void CAN_Logic_Handle_Buzzer(uint8_t* data, uint8_t len) {
+    if(len != 2) return;
+
+    uint8_t times = data[0] & 0x07;
+    uint8_t type  = data[1] & 0x03;
+
+    if(times == 0 || times > 4 || buzzer.active) return;
+
+    Buzzer_Start(times, (BuzzerSound)type);
 }
 
 
@@ -413,6 +447,11 @@ void CAN_Logic_Tick(void) {
 		uint8_t payload = manip_conv_en;
 		CAN_App_SendFrame(CAN_ID_SET_MANIP_STATE_ACK, &payload, 1);
 		manip_conv_en_done = 2;
+	}
+
+	if(pressed_off_button == 1) {
+		CAN_App_SendFrame(CAN_ID_PRESSED_OFF_BUTTON, NULL, 0);
+		pressed_off_button = 0;
 	}
 }
 

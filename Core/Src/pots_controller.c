@@ -14,6 +14,14 @@ static inline uint8_t get_delay_dependent_pot_value(uint16_t pot_value) {
 }
 
 
+void Pots_ResetCurrnetValue(void) {
+	pots[0].current_value = 128;
+	pots[1].current_value = 128;
+	pots[2].current_value = 128;
+	pots[3].current_value = 128;
+}
+
+
 void Pots_Tick(void) {
 	static uint8_t tick_counter[4] = {0};
 

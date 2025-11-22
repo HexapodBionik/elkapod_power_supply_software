@@ -6,6 +6,7 @@
 #include "pots_controller.h"
 #include "servos_controller.h"
 #include "voltage_outputs_controller.h"
+#include "buzzer_controller.h"
 
 #define CALC_CONVERTER_VOLTAGE(RF1, RF2, RF3, RP) \
     ( (uint16_t)( ((RF2) / (((RF1) * ((RP) + (RF3))) / ((RF1) + (RP) + (RF3))) + 1.0f) * 1.215f * 1000.0f ) )
@@ -36,6 +37,10 @@ void CAN_Logic_Handle_SetVoltage_Converter4(uint8_t* data, uint8_t len, uint8_t 
 void CAN_Logic_Handle_SetServosStates(uint8_t* data, uint8_t len);
 void CAN_Logic_Handle_SetManipState(uint8_t* data, uint8_t len);
 void CAN_Logic_Handle_SetVoltageOutputsStates(uint8_t* data, uint8_t len);
+
+void CAN_Logic_Handle_TurnOffPowerSupply(uint8_t len);
+
+void CAN_Logic_Handle_Buzzer(uint8_t* data, uint8_t len);
 
 
 void CAN_Logic_Tick(void);
