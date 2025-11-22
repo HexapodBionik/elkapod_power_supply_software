@@ -15,8 +15,17 @@
 #include "tim.h"
 
 
+typedef struct {
+    uint8_t tim7_running;
+    uint8_t tim8_pwm_running;
+    uint8_t tim17_running;
+} TimerStatus;
+
+
 void power_on_seqence(void);
 void wake_up_sequence(void);
+void power_off_sequence(void);
+
 void setup_pots(void);
 
 void turn_off_all_LEDs(void);

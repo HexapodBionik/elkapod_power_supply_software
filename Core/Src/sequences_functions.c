@@ -15,9 +15,46 @@ extern ADC121S021_HandleTypeDef spi_adcs[SPI_ADC_COUNT];
 extern PotChannel pots[4];
 extern ServoControllerState servos;
 
+extern uint8_t manip_conv_en;
+
 extern uint16_t converter_voltage_to_pot_value(float voltage, float R_FB1,
 		float R_FB2, float R_FB3,
 		float R_pot, float R_pot_offset);
+
+
+TimerStatus timers = {0};
+
+
+void Safe_Start_TIM_Base_IT(TIM_HandleTypeDef *htim, uint8_t *flag) {
+    if (*flag == 0) {
+        HAL_TIM_Base_Start_IT(htim);
+        *flag = 1;
+    }
+}
+
+
+void Safe_Stop_TIM_Base_IT(TIM_HandleTypeDef *htim, uint8_t *flag) {
+    if (*flag == 1) {
+        HAL_TIM_Base_Stop_IT(htim);
+        *flag = 0;
+    }
+}
+
+
+void Safe_Start_TIM_PWM(TIM_HandleTypeDef *htim, uint32_t channel, uint8_t *flag) {
+    if (*flag == 0) {
+        HAL_TIM_PWM_Start(htim, channel);
+        *flag = 1;
+    }
+}
+
+
+void Safe_Stop_TIM_PWM(TIM_HandleTypeDef *htim, uint32_t channel, uint8_t *flag) {
+    if (*flag == 1) {
+        HAL_TIM_PWM_Stop(htim, channel);
+        *flag = 0;
+    }
+}
 
 
 void power_on_seqence(void) {
@@ -26,7 +63,7 @@ void power_on_seqence(void) {
 	// enable VOLTAGE_EN
 	HAL_GPIO_WritePin(VOLTAGE_EN_GPIO_Port, VOLTAGE_EN_Pin, GPIO_PIN_RESET);
 
-	// enable expanders
+	// expanders setup
 	if(PCF7485_init(&expander1, &hi2c2_mgr, EXPANDER1_ADDRESS) != HAL_OK) {
 	  Error_Handler();
 	}
@@ -81,6 +118,8 @@ void power_on_seqence(void) {
 	// disable VOLTAGE_EN
 	HAL_GPIO_WritePin(VOLTAGE_EN_GPIO_Port, VOLTAGE_EN_Pin, GPIO_PIN_SET);
 
+	HAL_GPIO_WritePin(LED_POWER_ON_GPIO_Port, LED_POWER_ON_Pin, GPIO_PIN_RESET);
+
 }
 
 
@@ -96,26 +135,60 @@ void wake_up_sequence(void) {
 	// disable additional outputs
 	VoltageOutputs_ApplyImmediateAllOff();
 
+	// set temperatures MUX to position 0
+	HAL_GPIO_WritePin(MUX_B_GPIO_Port, MUX_B_Pin, GPIO_PIN_RESET);
+	HAL_GPIO_WritePin(MUX_A_GPIO_Port, MUX_A_Pin, GPIO_PIN_RESET);
+
 	// enable converters 1-3 and 5, disable HVC, enable POTs
 	PCF7485_write_buffer_blocking(&expander1, 0b01101000);
 
 	HAL_Delay(150);
 
 	// FAN PWM
-	HAL_TIM_PWM_Start(&htim8, TIM_CHANNEL_4);
+	Safe_Start_TIM_PWM(&htim8, TIM_CHANNEL_4, &timers.tim8_pwm_running);
 	__HAL_TIM_SET_COMPARE(&htim8, TIM_CHANNEL_4, 500); // 50% duty (500 / 999)
 
 	// STM ADCs timer start
-	HAL_TIM_Base_Start_IT(&htim7);
+	Safe_Start_TIM_Base_IT(&htim7, &timers.tim7_running);
 
 	// SPI ADCs timer start
-	HAL_TIM_Base_Start_IT(&htim17);
+	Safe_Start_TIM_Base_IT(&htim17, &timers.tim17_running);
+
 	setup_pots();
 
 	if(CAN_App_Init(CAN_ID_MIN, CAN_ID_MAX) != HAL_OK) {
 		Error_Handler();
 	}
 
+}
+
+void power_off_sequence(void) {
+	// stop timers
+	Safe_Stop_TIM_PWM(&htim8, TIM_CHANNEL_4, &timers.tim8_pwm_running);
+	Safe_Stop_TIM_Base_IT(&htim7, &timers.tim7_running);
+	Safe_Stop_TIM_Base_IT(&htim17, &timers.tim17_running);
+
+	// set manipulator disable flag
+	manip_conv_en = 0;
+
+	// disable all converters, disable HVC, disable POTs
+	PCF7485_write_buffer_blocking(&expander1, 0b11111111);
+	// disable all SPI ADC CSs pins
+	PCF7485_write_buffer_blocking(&expander2, 0b11111111);
+
+	// disable all servos outputs
+	Servos_ApplyImmediateOff(0x3FFFF);
+
+	// disable additional outputs
+	VoltageOutputs_ApplyImmediateAllOff();
+
+	// turn off all LEDS
+	turn_off_all_LEDs();
+
+	// disable VOLTAGE_EN
+	HAL_GPIO_WritePin(VOLTAGE_EN_GPIO_Port, VOLTAGE_EN_Pin, GPIO_PIN_SET);
+
+	HAL_GPIO_WritePin(LED_POWER_ON_GPIO_Port, LED_POWER_ON_Pin, GPIO_PIN_RESET);
 }
 
 
