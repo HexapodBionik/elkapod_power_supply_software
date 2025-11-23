@@ -5,6 +5,7 @@
 #define PCF_MAX_INSTANCES 2
 #define ADC_MAX_INSTANCES 8
 
+#define CONVERTER_COUNT 5
 #define SERVO_COUNT 18
 #define VOUT_COUNT 6
 
@@ -73,6 +74,8 @@
 
 
 // coefficients
+#define I_SERVO_MAX 3950.0f
+
 #define I_SERVO_COEFF 1.007326f
 #define I_MANIP_COEFF 8.058608f
 #define I_5V_POW_COEFF 4.029304f
@@ -174,6 +177,9 @@
 #define CAN_ID_SET_CONVERTER4_VOLTAGE_ACK 0x8F
 
 #define CAN_ID_USE_BUZZER 0x92
+
+#define CAN_ID_SERVICE_CLR_ERROR_REQ 0x96
+#define CAN_ID_SERVICE_CLR_ERROR_ACK 0x97
 
 
 // setup parameters

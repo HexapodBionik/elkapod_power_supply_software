@@ -3,7 +3,7 @@
 
 extern VoltageOutputsController vouts;
 
-GPIO_TypeDef* VOUT_PORT[VOUT_COUNT] = {
+static const GPIO_TypeDef* VOUT_PORT[VOUT_COUNT] = {
     V_OUT_EN1_GPIO_Port,
     V_OUT_EN2_GPIO_Port,
     V_OUT_EN3_GPIO_Port,
@@ -12,7 +12,7 @@ GPIO_TypeDef* VOUT_PORT[VOUT_COUNT] = {
     V_OUT_EN6_GPIO_Port
 };
 
-uint16_t VOUT_PIN[VOUT_COUNT] = {
+static const uint16_t VOUT_PIN[VOUT_COUNT] = {
     V_OUT_EN1_Pin,
     V_OUT_EN2_Pin,
     V_OUT_EN3_Pin,

@@ -33,6 +33,33 @@ BS_:
 
 BU_: ECU
 
+BO_ 101 CAN_ID_GET_ERROR_ACK: 4 ELKAPOD_PSU
+    SG_ Error_code : 7|8@0+ (1,0) [0|255] "" ELKAPOD_PSU
+    SG_ Data0  : 8|1@0+ (1,0) [0|1] "" ELKAPOD_PSU
+    SG_ Data1  : 9|1@0+ (1,0) [0|1] "" ELKAPOD_PSU
+    SG_ Data2  : 10|1@0+ (1,0) [0|1] "" ELKAPOD_PSU
+    SG_ Data3  : 11|1@0+ (1,0) [0|1] "" ELKAPOD_PSU
+    SG_ Data4  : 12|1@0+ (1,0) [0|1] "" ELKAPOD_PSU
+    SG_ Data5  : 13|1@0+ (1,0) [0|1] "" ELKAPOD_PSU
+    SG_ Data6  : 14|1@0+ (1,0) [0|1] "" ELKAPOD_PSU
+    SG_ Data7  : 15|1@0+ (1,0) [0|1] "" ELKAPOD_PSU
+    SG_ Data8  : 16|1@0+ (1,0) [0|1] "" ELKAPOD_PSU
+    SG_ Data9  : 17|1@0+ (1,0) [0|1] "" ELKAPOD_PSU
+    SG_ Data10 : 18|1@0+ (1,0) [0|1] "" ELKAPOD_PSU
+    SG_ Data11 : 19|1@0+ (1,0) [0|1] "" ELKAPOD_PSU
+    SG_ Data12 : 20|1@0+ (1,0) [0|1] "" ELKAPOD_PSU
+    SG_ Data13 : 21|1@0+ (1,0) [0|1] "" ELKAPOD_PSU
+    SG_ Data14 : 22|1@0+ (1,0) [0|1] "" ELKAPOD_PSU
+    SG_ Data15 : 23|1@0+ (1,0) [0|1] "" ELKAPOD_PSU
+    SG_ Data16 : 24|1@0+ (1,0) [0|1] "" ELKAPOD_PSU
+    SG_ Data17 : 25|1@0+ (1,0) [0|1] "" ELKAPOD_PSU
+    SG_ Data18 : 26|1@0+ (1,0) [0|1] "" ELKAPOD_PSU
+    SG_ Data19 : 27|1@0+ (1,0) [0|1] "" ELKAPOD_PSU
+    SG_ Data20 : 28|1@0+ (1,0) [0|1] "" ELKAPOD_PSU
+    SG_ Data21 : 29|1@0+ (1,0) [0|1] "" ELKAPOD_PSU
+    SG_ Data22 : 30|1@0+ (1,0) [0|1] "" ELKAPOD_PSU
+    SG_ Data23 : 31|1@0+ (1,0) [0|1] "" ELKAPOD_PSU
+
 BO_ 103 CAN_ID_TRUN_OFF_ACK: 0 ELKAPOD_PSU
 
 BO_ 105 CAN_ID_PRESSED_OFF_BUTTON: 0 ELKAPOD_PSU
@@ -144,4 +171,7 @@ BO_ 141 CAN_ID_SET_CONVERTER3_VOLTAGE_ACK: 2 ELKAPOD_PSU
 
 BO_ 143 CAN_ID_SET_CONVERTER4_VOLTAGE_ACK: 2 ELKAPOD_PSU
     SG_ Converter4_set_voltage  : 7|16@0+ (1,0) [0|65535] "mV" ELKAPOD_PSU
+
+
+BO_ 151 CAN_ID_SERVICE_CLR_ERROR_ACK: 0 ELKAPOD_PSU
 

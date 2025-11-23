@@ -7,6 +7,7 @@
 #include "servos_controller.h"
 #include "voltage_outputs_controller.h"
 #include "buzzer_controller.h"
+#include "error_manager.h"
 
 #define CALC_CONVERTER_VOLTAGE(RF1, RF2, RF3, RP) \
     ( (uint16_t)( ((RF2) / (((RF1) * ((RP) + (RF3))) / ((RF1) + (RP) + (RF3))) + 1.0f) * 1.215f * 1000.0f ) )
@@ -41,6 +42,9 @@ void CAN_Logic_Handle_SetVoltageOutputsStates(uint8_t* data, uint8_t len);
 void CAN_Logic_Handle_TurnOffPowerSupply(uint8_t len);
 
 void CAN_Logic_Handle_Buzzer(uint8_t* data, uint8_t len);
+
+void CAN_Logic_Handle_GetErrorCodes(uint8_t len);
+void CAN_Logic_Handle_Service_ClearCurrentError(uint8_t len);
 
 
 void CAN_Logic_Tick(void);

@@ -27,6 +27,7 @@ extern uint8_t turn_off_supply_request;
 extern volatile uint8_t pressed_off_button;
 
 extern BuzzerController buzzer;
+extern ErrorManager errm;
 
 
 const uint16_t CONV1_3_MAX_VOLTAGE =
@@ -72,82 +73,90 @@ static void CAN_Logic_ReadServoGroup(uint8_t start_idx, uint32_t ack_id) {
 
 void CAN_Logic_HandleFrame(uint32_t id, uint8_t *data, uint8_t len) {
 	switch(id) {
-	case CAN_ID_GET_SERVO_CURRENT_1_3_REQ:
-		CAN_Logic_Handle_GetCurrents_Servos_1_3(len);
-		break;
-	case CAN_ID_GET_SERVO_CURRENT_4_6_REQ:
-		CAN_Logic_Handle_GetCurrents_Servos_4_6(len);
-		break;
-	case CAN_ID_GET_SERVO_CURRENT_7_9_REQ:
-		CAN_Logic_Handle_GetCurrents_Servos_7_9(len);
-		break;
-	case CAN_ID_GET_SERVO_CURRENT_10_12_REQ:
-		CAN_Logic_Handle_GetCurrents_Servos_10_12(len);
-		break;
-	case CAN_ID_GET_SERVO_CURRENT_13_15_REQ:
-		CAN_Logic_Handle_GetCurrents_Servos_13_15(len);
-		break;
-	case CAN_ID_GET_SERVO_CURRENT_16_18_REQ:
-		CAN_Logic_Handle_GetCurrents_Servos_16_18(len);
-		break;
+		case CAN_ID_GET_SERVO_CURRENT_1_3_REQ:
+			CAN_Logic_Handle_GetCurrents_Servos_1_3(len);
+			break;
+		case CAN_ID_GET_SERVO_CURRENT_4_6_REQ:
+			CAN_Logic_Handle_GetCurrents_Servos_4_6(len);
+			break;
+		case CAN_ID_GET_SERVO_CURRENT_7_9_REQ:
+			CAN_Logic_Handle_GetCurrents_Servos_7_9(len);
+			break;
+		case CAN_ID_GET_SERVO_CURRENT_10_12_REQ:
+			CAN_Logic_Handle_GetCurrents_Servos_10_12(len);
+			break;
+		case CAN_ID_GET_SERVO_CURRENT_13_15_REQ:
+			CAN_Logic_Handle_GetCurrents_Servos_13_15(len);
+			break;
+		case CAN_ID_GET_SERVO_CURRENT_16_18_REQ:
+			CAN_Logic_Handle_GetCurrents_Servos_16_18(len);
+			break;
 
 
-	case CAN_ID_GET_I_MANIP_I_5V_POW_I_3V3_POW_REQ:
-		CAN_Logic_Handle_GetCurrents_I_MANIP_I_5V_POW_I_3V3_POW(len);
-		break;
-	case CAN_ID_GET_I_STANDBY_I_SUPPLY_REQ:
-		CAN_Logic_Handle_GetCurrents_I_STANDBY_I_SUPPLY(len);
-		break;
+		case CAN_ID_GET_I_MANIP_I_5V_POW_I_3V3_POW_REQ:
+			CAN_Logic_Handle_GetCurrents_I_MANIP_I_5V_POW_I_3V3_POW(len);
+			break;
+		case CAN_ID_GET_I_STANDBY_I_SUPPLY_REQ:
+			CAN_Logic_Handle_GetCurrents_I_STANDBY_I_SUPPLY(len);
+			break;
 
 
-	case CAN_ID_GET_U_CONVETERS_1_3_REQ:
-		CAN_Logic_Handle_GetVoltages_Converters_1_3(len);
-		break;
-	case CAN_ID_GET_U_CONVETERS_4_5_REQ:
-		CAN_Logic_Handle_GetVoltages_Converters_4_5(len);
-		break;
-	case CAN_ID_GET_U_SUPPLY_U_BAT_REQ:
-		CAN_Logic_Handle_GetVoltages_U_SUPPLY_U_BAT(len);
-		break;
+		case CAN_ID_GET_U_CONVETERS_1_3_REQ:
+			CAN_Logic_Handle_GetVoltages_Converters_1_3(len);
+			break;
+		case CAN_ID_GET_U_CONVETERS_4_5_REQ:
+			CAN_Logic_Handle_GetVoltages_Converters_4_5(len);
+			break;
+		case CAN_ID_GET_U_SUPPLY_U_BAT_REQ:
+			CAN_Logic_Handle_GetVoltages_U_SUPPLY_U_BAT(len);
+			break;
 
 
-	case CAN_ID_GET_TEMPERATURES_REQ:
-		CAN_Logic_Handle_GetTemperatures(len);
+		case CAN_ID_GET_TEMPERATURES_REQ:
+			CAN_Logic_Handle_GetTemperatures(len);
 
 
-	case CAN_ID_SET_CONVERTER1_VOLTAGE_REQ:
-		CAN_Logic_Handle_SetVoltage_Converters1_3(data, len, 0);
-		break;
-	case CAN_ID_SET_CONVERTER2_VOLTAGE_REQ:
-		CAN_Logic_Handle_SetVoltage_Converters1_3(data, len, 1);
-		break;
-	case CAN_ID_SET_CONVERTER3_VOLTAGE_REQ:
-		CAN_Logic_Handle_SetVoltage_Converters1_3(data, len, 2);
-		break;
-	case CAN_ID_SET_CONVERTER4_VOLTAGE_REQ:
-		CAN_Logic_Handle_SetVoltage_Converter4(data, len, 3);
-		break;
+		case CAN_ID_SET_CONVERTER1_VOLTAGE_REQ:
+			CAN_Logic_Handle_SetVoltage_Converters1_3(data, len, 0);
+			break;
+		case CAN_ID_SET_CONVERTER2_VOLTAGE_REQ:
+			CAN_Logic_Handle_SetVoltage_Converters1_3(data, len, 1);
+			break;
+		case CAN_ID_SET_CONVERTER3_VOLTAGE_REQ:
+			CAN_Logic_Handle_SetVoltage_Converters1_3(data, len, 2);
+			break;
+		case CAN_ID_SET_CONVERTER4_VOLTAGE_REQ:
+			CAN_Logic_Handle_SetVoltage_Converter4(data, len, 3);
+			break;
 
-	case CAN_ID_SET_SERVOS_STATES_REQ:
-		CAN_Logic_Handle_SetServosStates(data, len);
-		break;
-	case CAN_ID_SET_MANIP_STATE_REQ:
-		CAN_Logic_Handle_SetManipState(data, len);
-		break;
-	case CAN_ID_SET_VOLTAGE_OUTPUTS_STATES_REQ:
-		CAN_Logic_Handle_SetVoltageOutputsStates(data, len);
-		break;
+		case CAN_ID_SET_SERVOS_STATES_REQ:
+			CAN_Logic_Handle_SetServosStates(data, len);
+			break;
+		case CAN_ID_SET_MANIP_STATE_REQ:
+			CAN_Logic_Handle_SetManipState(data, len);
+			break;
+		case CAN_ID_SET_VOLTAGE_OUTPUTS_STATES_REQ:
+			CAN_Logic_Handle_SetVoltageOutputsStates(data, len);
+			break;
 
-	case CAN_ID_TURN_OFF_REQ:
-		CAN_Logic_Handle_TurnOffPowerSupply(len);
-		break;
+		case CAN_ID_TURN_OFF_REQ:
+			CAN_Logic_Handle_TurnOffPowerSupply(len);
+			break;
 
-	case CAN_ID_USE_BUZZER:
-		CAN_Logic_Handle_Buzzer(data, len);
-		break;
+		case CAN_ID_USE_BUZZER:
+			CAN_Logic_Handle_Buzzer(data, len);
+			break;
 
-	default:
-		break;
+		case CAN_ID_GET_ERROR_CODES_REQ:
+			CAN_Logic_Handle_GetErrorCodes(len);
+			break;
+
+		case CAN_ID_SERVICE_CLR_ERROR_REQ:
+			CAN_Logic_Handle_Service_ClearCurrentError(len);
+			break;
+
+		default:
+			break;
 	}
 }
 
@@ -383,6 +392,18 @@ void CAN_Logic_Handle_Buzzer(uint8_t* data, uint8_t len) {
 }
 
 
+void CAN_Logic_Handle_GetErrorCodes(uint8_t len) {
+	if(len != 0) return;
+	errm.error_pending_can = 1;
+}
+
+
+void CAN_Logic_Handle_Service_ClearCurrentError(uint8_t len) {
+	if(len != 0) return;
+	ErrorManager_CAN_DeleteLastViewed();
+}
+
+
 void CAN_Logic_Tick(void) {
 	// sending ACK for SET_CONVERTER commends
 	for(uint8_t i = 0; i < 3; i++) {
@@ -452,6 +473,19 @@ void CAN_Logic_Tick(void) {
 	if(pressed_off_button == 1) {
 		CAN_App_SendFrame(CAN_ID_PRESSED_OFF_BUTTON, NULL, 0);
 		pressed_off_button = 0;
+	}
+
+	if(errm.error_pending_can == 1) {
+	    uint8_t payload[8];
+	    uint8_t len = ErrorManager_BuildErrorPayload(payload);
+
+	    CAN_App_SendFrame(CAN_ID_GET_ERROR_CODES_ACK, payload, len);
+	    errm.error_pending_can = 0;
+	}
+
+	if(errm.can_delete_error_done == 1) {
+		CAN_App_SendFrame(CAN_ID_SERVICE_CLR_ERROR_ACK, NULL, 0);
+		errm.can_delete_error_done = 2;
 	}
 }
 
