@@ -351,7 +351,7 @@ void CAN_Logic_Handle_SetServosStates(uint8_t* data, uint8_t len) {
 
 	mask &= 0x3FFFF;
 
-	Servos_SetTargetMask(mask);
+	Servos_SetIntentMask(mask);
 }
 
 

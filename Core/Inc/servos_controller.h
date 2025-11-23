@@ -6,14 +6,17 @@
 
 
 typedef struct {
+	uint32_t target_intent_mask;
     uint32_t target_mask;   // 18-bit mask: 1 = ON, 0 = OFF
     uint32_t current_mask;
+    uint32_t blocked_mask;	// for overcurrent protection
     uint8_t done;           // 0 = working, 1 = request to send ACK, 2 = idle
 } ServoControllerState;
 
 
 void Servos_ApplyImmediateOff(uint32_t mask);
-void Servos_SetTargetMask(uint32_t new_mask);
+void Servos_RebuildEffectiveTarget(void);
+void Servos_SetIntentMask(uint32_t new_mask);
 
 void Servos_Tick(void);
 

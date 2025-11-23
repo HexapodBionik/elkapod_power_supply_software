@@ -3,6 +3,9 @@
 
 
 extern ErrorManager errm;
+extern ServoControllerState servos;
+extern PCF8574_HandleTypeDef expander1;
+extern uint8_t manip_conv_en;
 
 static const uint8_t servo_to_conv[SERVO_COUNT] = {
     0,0,0,0,0,0,   // servo 1..6 -> conv1
@@ -17,6 +20,15 @@ static const uint16_t CONV_OC_Pin[CONVERTER_COUNT] = {
 	CONV4_OC_Pin,
 	CONV5_OC_Pin
 };
+
+static const uint8_t EXPANDER1_CONVx_EN_Pins[5] = {
+    EXPANDER1_CONV1_EN,
+    EXPANDER1_CONV2_EN,
+    EXPANDER1_CONV3_EN,
+    EXPANDER1_CONV4_EN,
+    EXPANDER1_CONV5_EN
+};
+
 
 
 void ErrorManager_Init(void) {
@@ -90,6 +102,7 @@ void ErrorManager_Push(uint8_t code, uint8_t conv_mask, uint32_t servo_mask) {
             errm.view_index_led = 0;
             errm.view_index_can = 0;
 
+            ErrorManager_UpdateState();
             return;
         }
     }
@@ -114,6 +127,8 @@ void ErrorManager_Push(uint8_t code, uint8_t conv_mask, uint32_t servo_mask) {
     errm.view_index_can = 0;
 
     errm.error_pending_can = 1;
+
+    ErrorManager_UpdateState();
 }
 
 
@@ -138,6 +153,7 @@ static void ErrorManager_DeleteAtIndex(int8_t idx) {
         }
     }
 
+    ErrorManager_UpdateState();
     Buzzer_Start(1, BUZZ_LOW_LONG);
 }
 
@@ -242,6 +258,62 @@ uint8_t ErrorManager_BuildErrorPayload(uint8_t *buff) {
         default:
             return 1;
     }
+}
+
+
+static void ErrorManager_RebuildBlockMasks(void) {
+    errm.servo_block_mask = 0;
+    errm.conv_block_mask = 0;
+
+    for(uint8_t i = 0; i < errm.queue_size; i++) {
+        ErrorEntry *error = &errm.queue[i];
+
+        if(error->code == ERR_SERV_OVERCURRENT) {
+			errm.servo_block_mask |= error->servo_mask;
+
+        } else if(error->code == ERR_CONV_OVERCURRENT || error->code == ERR_CONV_OVERTEMP) {
+        	errm.conv_block_mask |= error->conv_mask;
+        }
+    }
+}
+
+
+static void ErrorManager_ApplyBlocks(void) {
+	static uint8_t last_conv_block_mask = 0;
+
+	// servos
+	servos.blocked_mask = errm.servo_block_mask;
+	Servos_RebuildEffectiveTarget();
+
+	// converters
+	for(uint8_t i = 0; i < 5; i++) {
+		uint8_t mask = (1 << i);
+
+		uint8_t is_blocked_now = errm.conv_block_mask & mask;
+		uint8_t was_blocked_before = last_conv_block_mask & mask;
+
+		// blocking -> enable
+		if(was_blocked_before && !is_blocked_now) {
+			if(i == 3 && manip_conv_en == 0) {
+				continue;
+			}
+			PCF7485_write_pin_blocking(&expander1, EXPANDER1_CONVx_EN_Pins[i],
+									   GPIO_PIN_RESET); // RESET = ON
+		}
+		// enable -> blocking
+		if(!was_blocked_before && is_blocked_now) {
+			PCF7485_write_pin_blocking(&expander1, EXPANDER1_CONVx_EN_Pins[i],
+									   GPIO_PIN_SET);   // SET = OFF
+		}
+	}
+
+	last_conv_block_mask = errm.conv_block_mask;
+}
+
+
+void ErrorManager_UpdateState(void) {
+    ErrorManager_RebuildBlockMasks();
+    ErrorManager_ApplyBlocks();
 }
 
 

@@ -4,6 +4,8 @@
 #include "main.h"
 #include "hardware_config.h"
 #include "buzzer_controller.h"
+#include "servos_controller.h"
+#include "pcf8574.h"
 
 #define ERR_CONV_OVERCURRENT  	0x01
 #define ERR_SERV_OVERCURRENT	0x02
@@ -41,6 +43,9 @@ typedef struct {
 
     uint8_t servo_oc_counters[SERVO_COUNT];
 
+    uint32_t servo_block_mask;
+    uint8_t  conv_block_mask;
+
 } ErrorManager;
 
 
@@ -64,6 +69,8 @@ void ErrorManager_LED_ViewNext(void);
 void ErrorManager_LED_DeleteCurrent(void);
 
 uint8_t ErrorManager_BuildErrorPayload(uint8_t *buff);
+
+void ErrorManager_UpdateState(void);
 
 void ErrorManager_ClearAll(void);
 

@@ -31,12 +31,23 @@ void Servos_ApplyImmediateOff(uint32_t mask) {
 }
 
 
-void Servos_SetTargetMask(uint32_t new_mask) {
-    servos.target_mask = new_mask;
-    servos.done = 0;
+void Servos_RebuildEffectiveTarget(void) {
+    servos.target_mask = servos.target_intent_mask & ~(servos.blocked_mask);
 
-    uint32_t to_turn_off = (~new_mask) & servos.current_mask;
-    Servos_ApplyImmediateOff(to_turn_off);
+    uint32_t to_turn_off_by_intent = servos.current_mask & (~servos.target_intent_mask);
+	uint32_t to_turn_off_by_block = servos.current_mask & servos.blocked_mask;
+	uint32_t to_off = to_turn_off_by_intent | to_turn_off_by_block;
+
+    if(to_off)
+        Servos_ApplyImmediateOff(to_off);
+
+    servos.done = 0;
+}
+
+
+void Servos_SetIntentMask(uint32_t new_mask) {
+    servos.target_intent_mask = new_mask;
+    Servos_RebuildEffectiveTarget();
 }
 
 
