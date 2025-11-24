@@ -13,6 +13,8 @@
 #define SERVO_COUNT 18
 #define VOUT_COUNT 6
 
+#define TEMP_SENSOR_COUNT 3
+
 
 // I2C addresses
 #define EXPANDER1_ADDRESS 0x70
@@ -56,6 +58,9 @@
 #define I_5V_POW_SENSE_ADC3_rank 2
 #define I_3V3_POW_SENSE_ADC3_rank 3
 #define I_STANDBY_SENSE_ADC3_rank 4
+// TEMPERATURE[0] => CONV1 TEMPERATURE
+// TEMPERATURE[1] => CONV5 TEMPERATURE
+// TEMPERATURE[2] => CONV4 TEMPERATURE
 
 
 // expanders pin mapping
@@ -120,6 +125,9 @@
 #define SLEEP_TRANSITION_TICK_DELAY 2000
 
 #define TURN_OFF_POWER_SUPPLY_TICK_DELAY 1000
+
+#define MAX_TEMP 65.0f
+#define MIN_U_SUPPLY 10.9f
 
 
 // CAN IDs

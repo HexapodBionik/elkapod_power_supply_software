@@ -605,7 +605,8 @@ void HAL_ADC_ConvCpltCallback(ADC_HandleTypeDef *hadc) {
 			adc3_done_samples = 0;
 
 			measured_temperature++;
-			if(measured_temperature >= 3) {
+			if(measured_temperature >= TEMP_SENSOR_COUNT) {
+				ErrorManager_CheckConverterTemps(temperatures);
 				measured_temperature = 0;
 			}
 
@@ -639,6 +640,8 @@ void spi_adc_read_callback(void* user, HAL_StatusTypeDef status, uint16_t value)
 				I_supply 	 = adc_to_voltage(spi_adc_avg_values[ADC_I_SUPPLY_CS_PIN], I_SUPPLY_COEFF);
 				U_supply	 = adc_to_voltage(spi_adc_avg_values[ADC_U_SUPPLY_CS_PIN], U_SUPPLY_COEFF);
 				U_bat_ADC	 = adc_to_voltage(spi_adc_avg_values[ADC_U_BAT_CS_PIN], U_BAT_ADC_COEFF);
+
+				ErrorManager_CheckSupplyVoltage(U_supply);
 			}
 		}
 	}

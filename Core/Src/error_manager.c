@@ -29,6 +29,12 @@ static const uint8_t EXPANDER1_CONVx_EN_Pins[5] = {
     EXPANDER1_CONV5_EN
 };
 
+static const uint8_t temp_sensor_to_conv_mask[TEMP_SENSOR_COUNT] = {
+	0x07, // TEMP1 -> CONV1, COMV2, CONV3
+	0x10, // TEMP2 -> CONV5
+	0x08, // TEMP3 -> CONV4
+};
+
 
 void ErrorManager_RegistryConverterToggleState(uint8_t converter_number) {
 	if(converter_number >= CONVERTER_COUNT)
@@ -81,10 +87,23 @@ void ErrorManager_CheckServoCurrents(float *servo_currents) {
 }
 
 
+void ErrorManager_CheckConverterTemps(float *temperatures) {
+	for(uint8_t i = 0; i < TEMP_SENSOR_COUNT; i++) {
+		if(temperatures[i] > MAX_TEMP) {
+			ErrorManager_Push(ERR_CONV_OVERTEMP, temp_sensor_to_conv_mask[i], 0);
+		}
+	}
+}
+
+void ErrorManager_CheckSupplyVoltage(float U_supply) {
+	if(U_supply < MIN_U_SUPPLY*1000.0f) {
+		ErrorManager_Push(ERR_VIN_TOO_LOW, 0, 0);
+	}
+}
+
+
 void ErrorManager_Push(uint8_t code, uint8_t conv_mask, uint32_t servo_mask) {
     uint32_t now = HAL_GetTick();
-
-    Buzzer_Start(2, BUZZ_HIGH_LONG);
 
     for(uint8_t i = 0; i < errm.queue_size; i++) {
         if(errm.queue[i].code == code) {
@@ -109,7 +128,11 @@ void ErrorManager_Push(uint8_t code, uint8_t conv_mask, uint32_t servo_mask) {
             errm.view_index_led = 0;
             errm.view_index_can = 0;
 
-            ErrorManager_UpdateState();
+            errm.update_state_request = 1;
+
+            if(code != ERR_VIN_TOO_LOW) {
+            	Buzzer_Start(2, BUZZ_HIGH_LONG);
+            }
             return;
         }
     }
@@ -135,7 +158,8 @@ void ErrorManager_Push(uint8_t code, uint8_t conv_mask, uint32_t servo_mask) {
 
     errm.error_pending_can = 1;
 
-    ErrorManager_UpdateState();
+    errm.update_state_request = 1;
+    Buzzer_Start(2, BUZZ_HIGH_LONG);
 }
 
 
@@ -265,7 +289,8 @@ uint8_t ErrorManager_BuildErrorPayload(uint8_t *buff) {
             return 4;
 
         case ERR_CONV_OVERTEMP:
-        	return 1;
+        	buff[1] = error->conv_mask;
+        	return 2;
 
         case ERR_VIN_TOO_LOW:
         	return 1;

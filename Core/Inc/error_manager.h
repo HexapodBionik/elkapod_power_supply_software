@@ -58,6 +58,8 @@ void ErrorManager_Tick(void);
 
 void ErrorManager_ConvOC_Notify(uint16_t GPIO_Pin);
 void ErrorManager_CheckServoCurrents(float *servo_currents);
+void ErrorManager_CheckConverterTemps(float *temperatures);
+void ErrorManager_CheckSupplyVoltage(float U_supply);
 
 void ErrorManager_Push(uint8_t code, uint8_t conv_mask, uint32_t servo_mask);
 void ErrorManager_DeleteCurrent(void);
