@@ -16,6 +16,7 @@
 
 #define CONV_OC_COUNT_THRESHOLD 10
 #define CONV_OC_MAX_DELAY_MS 2000
+#define CONV_TOGGLE_STATE_BLOCKING_TICKS 3000
 #define SERVO_OC_COUNT_THRESHOLD 10
 
 
@@ -38,8 +39,11 @@ typedef struct {
 	uint8_t error_pending_can;
 	uint8_t can_delete_error_done;
 
+	uint8_t update_state_request;
+
     uint8_t conv_oc_counters[CONVERTER_COUNT];
     uint32_t last_conv_oc_tick[CONVERTER_COUNT];
+    uint32_t last_conv_toggle_state_tick[CONVERTER_COUNT];
 
     uint8_t servo_oc_counters[SERVO_COUNT];
 
@@ -70,6 +74,7 @@ void ErrorManager_LED_DeleteCurrent(void);
 
 uint8_t ErrorManager_BuildErrorPayload(uint8_t *buff);
 
+void ErrorManager_RegistryConverterToggleState(uint8_t converter_number);
 void ErrorManager_UpdateState(void);
 
 void ErrorManager_ClearAll(void);

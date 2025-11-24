@@ -1,3 +1,7 @@
+#ifndef HARDWARE_CONFIG_H
+#define HARDWARE_CONFIG_H
+
+
 // amount of peripherals
 #define ADC1_CHANNELS 16
 #define ADC3_CHANNELS 7
@@ -187,3 +191,18 @@
 #define CONVERTER2_SETUP_VOLTAGE 7.4f
 #define CONVERTER3_SETUP_VOLTAGE 7.4f
 #define CONVERTER4_SETUP_VOLTAGE 12.0f
+
+
+// additional structures
+
+typedef enum {
+    CONV1,
+    CONV2,
+    CONV3,
+    CONV4,
+    CONV5,
+} ConverterIndex;
+
+
+
+#endif // HARDWARE_CONFIG_H

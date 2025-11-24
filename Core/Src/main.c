@@ -316,6 +316,7 @@ int main(void)
 	HAL_ADCEx_Calibration_Start(&hadc3, ADC_SINGLE_ENDED);
 
 	I2C_Manager_Init(&hi2c2_mgr, &hi2c2);
+	ErrorManager_Init();
 
 	power_on_seqence();
 
@@ -361,8 +362,10 @@ int main(void)
 		if(manip_conv_en_done == 0) {
 			if(manip_conv_en == 1) {
 				PCF7485_write_pin_blocking(&expander1, EXPANDER1_CONV4_EN, GPIO_PIN_RESET);
+				ErrorManager_RegistryConverterToggleState(CONV4);
 			} else {
 				PCF7485_write_pin_blocking(&expander1, EXPANDER1_CONV4_EN, GPIO_PIN_SET);
+				ErrorManager_RegistryConverterToggleState(CONV4);
 			}
 			manip_conv_en_done = 1;
 		}

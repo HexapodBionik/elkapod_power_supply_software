@@ -30,6 +30,12 @@ static const uint8_t EXPANDER1_CONVx_EN_Pins[5] = {
 };
 
 
+void ErrorManager_RegistryConverterToggleState(uint8_t converter_number) {
+	if(converter_number >= CONVERTER_COUNT)
+		return;
+	errm.last_conv_toggle_state_tick[converter_number] = HAL_GetTick();
+}
+
 
 void ErrorManager_Init(void) {
 	memset(&errm, 0, sizeof(errm));
@@ -44,7 +50,8 @@ void ErrorManager_ConvOC_Notify(uint16_t GPIO_Pin) {
 
     for(uint8_t i = 0; i < 5; i++) {
         if(GPIO_Pin == CONV_OC_Pin[i]) {
-            if(now - errm.last_conv_oc_tick[i] < CONV_OC_MAX_DELAY_MS) {
+            if(now - errm.last_conv_oc_tick[i] < CONV_OC_MAX_DELAY_MS &&
+            		now - errm.last_conv_toggle_state_tick[i] > CONV_TOGGLE_STATE_BLOCKING_TICKS) {
                 if(errm.conv_oc_counters[i] < 255)
                     errm.conv_oc_counters[i]++;
             } else {
@@ -153,7 +160,7 @@ static void ErrorManager_DeleteAtIndex(int8_t idx) {
         }
     }
 
-    ErrorManager_UpdateState();
+    errm.update_state_request = 1;
     Buzzer_Start(1, BUZZ_LOW_LONG);
 }
 
@@ -215,13 +222,21 @@ void ErrorManager_Tick(void) {
     uint32_t now = HAL_GetTick();
 
     // Converters
-    for(uint8_t i = 0; i < CONVERTER_COUNT; i++) {
+    for(ConverterIndex i = CONV1; i < CONVERTER_COUNT; i++) {
         if(errm.conv_oc_counters[i] >= CONV_OC_COUNT_THRESHOLD) {
-			ErrorManager_Push(ERR_CONV_OVERCURRENT, (1u << i), 0);
+        	if(now - errm.last_conv_toggle_state_tick[i] > CONV_TOGGLE_STATE_BLOCKING_TICKS) {
+        		ErrorManager_Push(ERR_CONV_OVERCURRENT, (1u << i), 0);
+        		ErrorManager_RegistryConverterToggleState(i);
+        	}
         }
 
         if(now - errm.last_conv_oc_tick[i] > CONV_OC_MAX_DELAY_MS)
             errm.conv_oc_counters[i] = 0;
+    }
+
+    if(errm.update_state_request == 1) {
+    	ErrorManager_UpdateState();
+    	errm.update_state_request = 0;
     }
 }
 
@@ -286,7 +301,7 @@ static void ErrorManager_ApplyBlocks(void) {
 	Servos_RebuildEffectiveTarget();
 
 	// converters
-	for(uint8_t i = 0; i < 5; i++) {
+	for(ConverterIndex i = CONV1; i < CONVERTER_COUNT; i++) {
 		uint8_t mask = (1 << i);
 
 		uint8_t is_blocked_now = errm.conv_block_mask & mask;
@@ -299,11 +314,13 @@ static void ErrorManager_ApplyBlocks(void) {
 			}
 			PCF7485_write_pin_blocking(&expander1, EXPANDER1_CONVx_EN_Pins[i],
 									   GPIO_PIN_RESET); // RESET = ON
+			ErrorManager_RegistryConverterToggleState(i);
 		}
 		// enable -> blocking
 		if(!was_blocked_before && is_blocked_now) {
 			PCF7485_write_pin_blocking(&expander1, EXPANDER1_CONVx_EN_Pins[i],
 									   GPIO_PIN_SET);   // SET = OFF
+			ErrorManager_RegistryConverterToggleState(i);
 		}
 	}
 
