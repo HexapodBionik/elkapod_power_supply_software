@@ -6,6 +6,7 @@
 #include "buzzer_controller.h"
 #include "servos_controller.h"
 #include "pcf8574.h"
+#include "flash_error_manager.h"
 
 #define ERR_CONV_OVERCURRENT  	0x01
 #define ERR_SERV_OVERCURRENT	0x02

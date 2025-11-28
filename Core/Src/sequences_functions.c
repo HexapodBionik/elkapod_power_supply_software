@@ -142,6 +142,9 @@ void wake_up_sequence(void) {
 	// enable converters 1-3 and 5, disable HVC, enable POTs
 	PCF7485_write_buffer_blocking(&expander1, 0b01101000);
 
+	ErrorManager_FlashLoad();
+	ErrorManager_UpdateState();
+
 	HAL_Delay(1500);
 
 	// FAN PWM

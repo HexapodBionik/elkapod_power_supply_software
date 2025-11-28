@@ -260,6 +260,7 @@ void ErrorManager_Tick(void) {
 
     if(errm.update_state_request == 1) {
     	ErrorManager_UpdateState();
+    	ErrorManager_FlashSave();
     	errm.update_state_request = 0;
     }
 }

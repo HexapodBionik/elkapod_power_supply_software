@@ -272,7 +272,6 @@ int main(void)
 {
 
 	/* USER CODE BEGIN 1 */
-	uint16_t main_iteration = 0;
 	uint16_t turn_off_supply_tick = 0;
 
 
@@ -316,6 +315,7 @@ int main(void)
 	HAL_ADCEx_Calibration_Start(&hadc3, ADC_SINGLE_ENDED);
 
 	I2C_Manager_Init(&hi2c2_mgr, &hi2c2);
+
 	ErrorManager_Init();
 
 	power_on_seqence();
@@ -380,7 +380,6 @@ int main(void)
 		CAN_Logic_Tick();
 
 		HAL_Delay(1);
-		main_iteration++;
 
 
 
