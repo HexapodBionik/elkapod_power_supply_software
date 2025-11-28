@@ -3,8 +3,10 @@
 
 #include "error_manager.h"
 
-#define FLASH_ERR_PAGE_ADDR  0x0807E800
 #define FLASH_ERR_PAGE_SIZE  2048
+#define FLASH_TOTAL_SIZE (512U * 1024U)   // 512 kB
+#define FLASH_ERR_PAGE_ADDR (FLASH_BASE + FLASH_TOTAL_SIZE - FLASH_ERR_PAGE_SIZE)
+
 
 
 typedef struct __attribute__((packed)) {

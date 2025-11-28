@@ -12,36 +12,69 @@ uint8_t crc8_XOR(const uint8_t* data, uint8_t len) {
 }
 
 
+static inline uint32_t flash_page_from_addr(uint32_t addr) {
+    return (addr - FLASH_BASE) / FLASH_ERR_PAGE_SIZE;
+}
+
+
+static uint8_t flash_erase_page(uint32_t page_index) {
+    FLASH_EraseInitTypeDef erase;
+    uint32_t page_error = 0;
+
+    erase.TypeErase = FLASH_TYPEERASE_PAGES;
+    erase.Banks = FLASH_BANK_1;
+    erase.Page = page_index;
+    erase.NbPages = 1;
+
+    if(HAL_FLASHEx_Erase(&erase, &page_error) != HAL_OK) {
+        return 0;
+    }
+    return 1;
+}
+
+
+static uint8_t flash_program_doubleword(uint32_t address, uint64_t data) {
+    HAL_StatusTypeDef status = HAL_FLASH_Program(FLASH_TYPEPROGRAM_DOUBLEWORD, address, data);
+    return (status == HAL_OK) ? 1 : 0;
+}
+
+
 void ErrorManager_FlashLoad(void) {
-	FlashHeader *hdr = (FlashHeader*)FLASH_ERR_PAGE_ADDR;
+    FlashHeader *hdr = (FlashHeader*)FLASH_ERR_PAGE_ADDR;
 
-	if(hdr->size > ERROR_MAX_QUEUE) {
-		errm.queue_size = 0;
-		return;
-	}
+    if(hdr->size > ERROR_MAX_QUEUE) {
+        errm.queue_size = 0;
+        return;
+    }
 
-	FlashErrorEntry *flash_entries = (FlashErrorEntry*)(FLASH_ERR_PAGE_ADDR + 8);
+    FlashErrorEntry *flash_entries = (FlashErrorEntry*)(FLASH_ERR_PAGE_ADDR + 8);
 
-	for(uint8_t i = 0; i < hdr->size; i++) {
+    for(uint8_t i = 0; i < hdr->size; ++i) {
+        FlashErrorEntry fe = flash_entries[i];
 
-		FlashErrorEntry e = flash_entries[i];
+        uint8_t crc = crc8_XOR((uint8_t*)&fe, 6);
 
-		uint8_t crc = crc8_XOR((uint8_t*)&e, 6);
+        if(crc != fe.crc) {
+            errm.queue_size = 0;
+            return;
+        }
 
-		if(crc != e.crc) {
-			errm.queue_size = 0;
-			return;
-		}
+        errm.queue[i].code       = fe.code;
+        errm.queue[i].conv_mask  = fe.conv_mask;
+        errm.queue[i].servo_mask = fe.servo_mask;
+        errm.queue[i].timestamp  = HAL_GetTick();
+    }
 
-		errm.queue[i].code       = e.code;
-		errm.queue[i].conv_mask  = e.conv_mask;
-		errm.queue[i].servo_mask = e.servo_mask;
-		errm.queue[i].timestamp  = HAL_GetTick();
-	}
+    errm.queue_size = hdr->size;
 
-	errm.queue_size = hdr->size;
-	errm.view_index_led = 0;
-	errm.view_index_can = 0;
+
+    if(errm.queue_size > 0) {
+        errm.view_index_led = 0;
+        errm.view_index_can = 0;
+    } else {
+        errm.view_index_led = -1;
+        errm.view_index_can = -1;
+    }
 }
 
 
@@ -71,57 +104,47 @@ uint8_t ErrorManager_FlashNeedsUpdate(void) {
 }
 
 
-static void Flash_WriteHeader(uint8_t qsize) {
-    FlashHeader hdr;
-    hdr.size = (uint32_t)qsize;
-    hdr.pad  = 0xFFFFFFFF;
-
-    uint64_t packed = 0;
-    memcpy(&packed, &hdr, sizeof(hdr));
-
-    HAL_FLASH_Program(FLASH_TYPEPROGRAM_DOUBLEWORD,
-                      FLASH_ERR_PAGE_ADDR,
-                      packed);
-}
-
-
-
 void ErrorManager_FlashSave(void) {
     if(!ErrorManager_FlashNeedsUpdate())
         return;
 
+    FlashHeader hdr;
+    hdr.size = (uint32_t)errm.queue_size;
+    hdr.pad  = 0xFFFFFFFFUL;
+
+    FlashErrorEntry entries[ERROR_MAX_QUEUE];
+    for(uint8_t i = 0; i < errm.queue_size; ++i) {
+        entries[i].code = errm.queue[i].code;
+        entries[i].conv_mask = errm.queue[i].conv_mask;
+        entries[i].servo_mask = errm.queue[i].servo_mask;
+        entries[i].crc = crc8_XOR((const uint8_t*)&entries[i], 1 + 1 + 4);
+        entries[i].pad = 0xFF;
+    }
+
     HAL_FLASH_Unlock();
 
-    FLASH_EraseInitTypeDef erase;
-    uint32_t page_error;
+    uint32_t page_index = flash_page_from_addr(FLASH_ERR_PAGE_ADDR);
+    if(!flash_erase_page(page_index)) {
+        HAL_FLASH_Lock();
+        return;
+    }
 
-    erase.TypeErase = FLASH_TYPEERASE_PAGES;
-    erase.Page = (FLASH_ERR_PAGE_ADDR - FLASH_BASE) / FLASH_ERR_PAGE_SIZE;
-    erase.NbPages = 1;
-
-    HAL_FLASHEx_Erase(&erase, &page_error);
-
-    Flash_WriteHeader(errm.queue_size);
+    uint64_t packed = 0;
+    memcpy(&packed, &hdr, sizeof(hdr));
+    if(!flash_program_doubleword(FLASH_ERR_PAGE_ADDR, packed)) {
+        HAL_FLASH_Lock();
+        return;
+    }
 
     uint32_t base = FLASH_ERR_PAGE_ADDR + 8;
-	uint64_t buf;
-
-	for(uint8_t i = 0; i < errm.queue_size; i++) {
-
-		FlashErrorEntry e;
-
-		e.code       = errm.queue[i].code;
-		e.conv_mask  = errm.queue[i].conv_mask;
-		e.servo_mask = errm.queue[i].servo_mask;
-		e.crc        = crc8_XOR((uint8_t*)&e, 6);
-		e.pad        = 0xFF;
-
-		memcpy(&buf, &e, sizeof(e));
-
-		HAL_FLASH_Program(FLASH_TYPEPROGRAM_DOUBLEWORD,
-			base + (i * 8),
-			buf);
-	}
+    for(uint8_t i = 0; i < errm.queue_size; ++i) {
+        uint64_t p = 0;
+        memcpy(&p, &entries[i], sizeof(entries[i]));
+        if(!flash_program_doubleword(base + (i * 8), p)) {
+            HAL_FLASH_Lock();
+            return;
+        }
+    }
 
     HAL_FLASH_Lock();
 }
