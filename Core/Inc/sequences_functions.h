@@ -11,6 +11,7 @@
 #include "pots_controller.h"
 #include "servos_controller.h"
 #include "voltage_outputs_controller.h"
+#include "buttons_leds.h"
 
 #include "tim.h"
 
@@ -24,7 +25,8 @@ typedef struct {
 
 void power_on_seqence(void);
 void wake_up_sequence(void);
-void power_off_sequence(void);
+void power_off_sequence(uint8_t additional_delay);
+void bat_measurement_in_sleep_sequence(void);
 
 void setup_pots(void);
 

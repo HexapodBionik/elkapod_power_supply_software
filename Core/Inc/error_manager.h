@@ -19,6 +19,7 @@
 #define CONV_OC_MAX_DELAY_MS 2000
 #define CONV_TOGGLE_STATE_BLOCKING_TICKS 3000
 #define SERVO_OC_COUNT_THRESHOLD 10
+#define VIN_TOO_LOW_COUNT_THRESHOLD 10
 
 
 typedef struct {
@@ -47,6 +48,8 @@ typedef struct {
     uint32_t last_conv_toggle_state_tick[CONVERTER_COUNT];
 
     uint8_t servo_oc_counters[SERVO_COUNT];
+
+    uint8_t supply_voltage_too_low_counter;
 
     uint32_t servo_block_mask;
     uint8_t  conv_block_mask;

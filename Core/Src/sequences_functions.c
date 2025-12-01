@@ -17,6 +17,11 @@ extern ServoControllerState servos;
 
 extern uint8_t manip_conv_en;
 
+extern volatile uint8_t spi_adc_measurement_cycle_done;
+extern float U_bat_ADC;
+
+extern uint8_t fatal_error;
+
 extern uint16_t converter_voltage_to_pot_value(float voltage, float R_FB1,
 		float R_FB2, float R_FB3,
 		float R_pot, float R_pot_offset);
@@ -65,11 +70,11 @@ void power_on_seqence(void) {
 
 	// expanders setup
 	if(PCF7485_init(&expander1, &hi2c2_mgr, EXPANDER1_ADDRESS) != HAL_OK) {
-	  Error_Handler();
+		fatal_error = 1;
 	}
 
 	if(PCF7485_init(&expander2, &hi2c2_mgr, EXPANDER2_ADDRESS) != HAL_OK) {
-	  Error_Handler();
+		fatal_error = 1;
 	}
 
 	// disable all converters, disable HVC, enable POTs
@@ -94,16 +99,16 @@ void power_on_seqence(void) {
 
 	// setup pots
 	if(MCP4552_init(&pot1, &hi2c2_mgr, POT1_ADDRESS) != HAL_OK) {
-	  Error_Handler();
+		fatal_error = 1;
 	}
 	if(MCP4552_init(&pot2, &hi2c2_mgr, POT2_ADDRESS) != HAL_OK) {
-	  Error_Handler();
+		fatal_error = 1;
 	}
 	if(MCP4552_init(&pot3, &hi2c2_mgr, POT3_ADDRESS) != HAL_OK) {
-	  Error_Handler();
+		fatal_error = 1;
 	}
 	if(MCP4552_init(&pot4, &hi2c2_mgr, POT4_ADDRESS) != HAL_OK) {
-	  Error_Handler();
+		fatal_error = 1;
 	}
 
 	// SPI ADCs setup
@@ -119,6 +124,8 @@ void power_on_seqence(void) {
 	HAL_GPIO_WritePin(VOLTAGE_EN_GPIO_Port, VOLTAGE_EN_Pin, GPIO_PIN_SET);
 
 	HAL_GPIO_WritePin(LED_POWER_ON_GPIO_Port, LED_POWER_ON_Pin, GPIO_PIN_RESET);
+
+	HAL_GPIO_WritePin(LED_FATAL_ERROR_GPIO_Port, LED_FATAL_ERROR_Pin, fatal_error ? GPIO_PIN_SET : GPIO_PIN_RESET);
 
 }
 
@@ -168,11 +175,12 @@ void wake_up_sequence(void) {
 
 }
 
-void power_off_sequence(void) {
+void power_off_sequence(uint8_t additional_delay) {
 	// stop timers
 	Safe_Stop_TIM_PWM(&htim8, TIM_CHANNEL_4, &timers.tim8_pwm_running);
 	Safe_Stop_TIM_Base_IT(&htim7, &timers.tim7_running);
 	Safe_Stop_TIM_Base_IT(&htim17, &timers.tim17_running);
+	spi_adc_measurement_cycle_done = 0;
 
 	// set manipulator disable flag
 	manip_conv_en = 0;
@@ -191,12 +199,44 @@ void power_off_sequence(void) {
 	// turn off all LEDS
 	turn_off_all_LEDs();
 
-	HAL_Delay(1500);
+	if(additional_delay) {
+		HAL_Delay(1500);
+	}
 
 	// disable VOLTAGE_EN
 	HAL_GPIO_WritePin(VOLTAGE_EN_GPIO_Port, VOLTAGE_EN_Pin, GPIO_PIN_SET);
 
 	HAL_GPIO_WritePin(LED_POWER_ON_GPIO_Port, LED_POWER_ON_Pin, GPIO_PIN_RESET);
+}
+
+
+void bat_measurement_in_sleep_sequence(void) {
+	HAL_GPIO_WritePin(VOLTAGE_EN_GPIO_Port, VOLTAGE_EN_Pin, GPIO_PIN_RESET);
+
+	// disable all servos outputs
+	Servos_ApplyImmediateOff(0x3FFFF);
+
+	// disable additional outputs
+	VoltageOutputs_ApplyImmediateAllOff();
+
+	// set temperatures MUX to position 0
+	HAL_GPIO_WritePin(MUX_B_GPIO_Port, MUX_B_Pin, GPIO_PIN_RESET);
+	HAL_GPIO_WritePin(MUX_A_GPIO_Port, MUX_A_Pin, GPIO_PIN_RESET);
+
+	// turn off all LEDS
+	turn_off_all_LEDs();
+
+	// SPI ADCs timer start
+	spi_adc_measurement_cycle_done = 0;
+	Safe_Start_TIM_Base_IT(&htim17, &timers.tim17_running);
+
+	while(spi_adc_measurement_cycle_done);
+
+	BatIndicator_Update(U_bat_ADC);
+	HAL_Delay(1000);
+
+	while(HAL_GPIO_ReadPin(SW_BAT_INDICATOR_GPIO_Port, SW_BAT_INDICATOR_Pin) == GPIO_PIN_RESET);
+
 }
 
 

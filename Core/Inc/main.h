@@ -190,6 +190,7 @@ void Error_Handler(void);
 #define SW_CLR_ERR_GPIO_Port GPIOG
 #define SW_BAT_INDICATOR_Pin GPIO_PIN_8
 #define SW_BAT_INDICATOR_GPIO_Port GPIOG
+#define SW_BAT_INDICATOR_EXTI_IRQn EXTI9_5_IRQn
 #define FAN_Pin GPIO_PIN_9
 #define FAN_GPIO_Port GPIOC
 #define OPTIONAL_Pin GPIO_PIN_0

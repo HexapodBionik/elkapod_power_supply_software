@@ -52,33 +52,32 @@ static void flash_enable_caches(void) {
 
 
 
-static int flash_program_doubleword_checked(uint32_t address, uint64_t data) {
+static HAL_StatusTypeDef flash_program_doubleword(uint32_t address, uint64_t data) {
     if((address & 0x7) != 0) {
-        return -1;
+        return HAL_ERROR;
     }
 
     flash_clear_error_flags();
 
     if(!flash_wait_ready(500)) {
-        return -2;
+        return HAL_ERROR;
     }
 
     HAL_StatusTypeDef status = HAL_FLASH_Program(FLASH_TYPEPROGRAM_DOUBLEWORD, address, data);
 
     if(status != HAL_OK) {
-        uint32_t err = HAL_FLASH_GetError();
-        return (int)err;
+        return status;
     }
 
     if(!flash_wait_ready(500)) {
-        return -3;
+        return HAL_ERROR;
     }
 
-    return 0;
+    return HAL_OK;
 }
 
 
-static int flash_erase_page_checked(uint32_t page_index) {
+static HAL_StatusTypeDef flash_erase_page(uint32_t page_index) {
     FLASH_EraseInitTypeDef erase;
     uint32_t page_error = 0;
     uint32_t address = FLASH_BASE + page_index * FLASH_ERR_PAGE_SIZE;
@@ -90,25 +89,24 @@ static int flash_erase_page_checked(uint32_t page_index) {
 
     flash_clear_error_flags();
     if(!flash_wait_ready(500)) {
-    	return -1;
+    	return HAL_ERROR;
     }
 
     if(HAL_FLASHEx_Erase(&erase, &page_error) != HAL_OK) {
-        uint32_t err = HAL_FLASH_GetError();
-        return (int)err;
+        return HAL_ERROR;
     }
 
     if(!flash_wait_ready(500)) {
-    	return -2; //
+    	return HAL_ERROR;
     }
 
     volatile uint64_t *p_data = (volatile uint64_t *)address;
 
     if (*p_data != 0xFFFFFFFFFFFFFFFFULL) {
-        return -10;
+        return HAL_ERROR;
     }
 
-    return 0;
+    return HAL_OK;
 }
 
 
@@ -199,8 +197,8 @@ void ErrorManager_FlashSave(void) {
     HAL_FLASH_Unlock();
 
     uint32_t page_index = flash_page_from_addr(FLASH_ERR_PAGE_ADDR);
-    int rc = flash_erase_page_checked(page_index);
-    if(rc != 0) {
+    HAL_StatusTypeDef status = flash_erase_page(page_index);
+    if(status != HAL_OK) {
         HAL_FLASH_Lock();
         flash_enable_caches();
         return;
@@ -208,8 +206,8 @@ void ErrorManager_FlashSave(void) {
 
     uint64_t packed = 0;
     memcpy(&packed, &hdr, sizeof(hdr));
-    rc = flash_program_doubleword_checked(FLASH_ERR_PAGE_ADDR, packed);
-    if(rc != 0) {
+    status = flash_program_doubleword(FLASH_ERR_PAGE_ADDR, packed);
+    if(status != HAL_OK) {
         HAL_FLASH_Lock();
         flash_enable_caches();
         return;
@@ -219,8 +217,8 @@ void ErrorManager_FlashSave(void) {
     for(uint8_t i = 0; i < errm.queue_size; ++i) {
         uint64_t p = 0;
         memcpy(&p, &entries[i], sizeof(entries[i]));
-        rc = flash_program_doubleword_checked(base + (i * 8), p);
-        if(rc != 0) {
+        status = flash_program_doubleword(base + (i * 8), p);
+        if(status != HAL_OK) {
             HAL_FLASH_Lock();
             flash_enable_caches();
             return;

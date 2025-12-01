@@ -5,3 +5,4 @@
 
 
 void ButtonsLEDs_Tick(void);
+void BatIndicator_Update(float U_bat);

@@ -83,8 +83,6 @@
 
 
 // coefficients
-#define I_SERVO_MAX 3950.0f
-
 #define I_SERVO_COEFF 1.007326f
 #define I_MANIP_COEFF 8.058608f
 #define I_5V_POW_COEFF 4.029304f
@@ -117,17 +115,25 @@
 
 
 // constants values and other coefficients
+#define I_SERVO_MAX 3950.0f
+
 #define CONV_EN_OC_DELAY 50
 #define EN_SERVOS_TICK_DELAY 25
 #define VOUT_TICK_DELAY 25
 
-#define EXTI_SW_TICK_DELAY 100
+#define EXTI_SW_TICK_DELAY 20
 #define SLEEP_TRANSITION_TICK_DELAY 2000
 
 #define TURN_OFF_POWER_SUPPLY_TICK_DELAY 1000
 
 #define MAX_TEMP 65.0f
 #define MIN_U_SUPPLY 10.9f
+
+#define BAT_20_VALUE 12000.0f
+#define BAT_40_VALUE 13900.0f
+#define BAT_60_VALUE 14200.0f
+#define BAT_80_VALUE 14800.0f
+#define BAT_100_VALUE 15600.0f
 
 
 // CAN IDs

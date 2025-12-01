@@ -97,8 +97,16 @@ void ErrorManager_CheckConverterTemps(float *temperatures) {
 
 void ErrorManager_CheckSupplyVoltage(float U_supply) {
 	if(U_supply < MIN_U_SUPPLY*1000.0f) {
-		ErrorManager_Push(ERR_VIN_TOO_LOW, 0, 0);
+		if(errm.supply_voltage_too_low_counter < 255)
+			errm.supply_voltage_too_low_counter++;
+	} else {
+		errm.supply_voltage_too_low_counter = 0;
 	}
+	if(errm.supply_voltage_too_low_counter >= VIN_TOO_LOW_COUNT_THRESHOLD) {
+		ErrorManager_Push(ERR_VIN_TOO_LOW, 0, 0);
+		errm.supply_voltage_too_low_counter = 0;
+	}
+
 }
 
 
